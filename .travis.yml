@@ -17,7 +17,8 @@ addons:
 cache:
   directories:
   - $HOME/.gradle
-  - js/node_modules
+  - $HOME/python-deps
+  - $TRAVIS_BUILD_DIR/js/node_modules
 
 os:
   - linux
@@ -34,6 +35,9 @@ env:
     - LMDB_REVISION=0.9.16
     - LMDB_BUILD_DIR=${TRAVIS_BUILD_DIR}/lmdb-LMDB_${LMDB_REVISION}
     - LMDB_HOME=${TRAVIS_BUILD_DIR}/lmdb
+    - PYTHONUSERBASE=${HOME}/python-deps
+    - PYTHONPATH=${PYTHONUSERBASE}
+
   matrix:
     - WORK_DIR=${TRAVIS_BUILD_DIR}/cpp CPP11_MAPPING=yes BUILD_ICE_BT=no TEST_FLAGS="--c++11"
     - WORK_DIR=${TRAVIS_BUILD_DIR}
@@ -64,7 +68,7 @@ install:
 - mkdir -p ${LMDB_HOME}/man/man1
 - CPPFLAGS=-fPIC make -C ${LMDB_BUILD_DIR}/libraries/liblmdb install prefix=${LMDB_HOME}
 - rm -f ${LMDB_HOME}/lib/liblmdb.so
-- pip install passlib
+- pip install --user passlib
 - make -C ${WORK_DIR} -j3
 
 script:
