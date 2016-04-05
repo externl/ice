@@ -15,12 +15,6 @@ addons:
     - libdbus-glib-1-dev
     - libbluetooth-dev
 
-cache:
-  directories:
-  - $HOME/.gradle
-  - $HOME/python-deps
-  - $TRAVIS_BUILD_DIR/js/node_modules
-
 os:
   - linux
   - osx
@@ -42,6 +36,12 @@ env:
   matrix:
     - WORK_DIR=${TRAVIS_BUILD_DIR}/cpp CPP11_MAPPING=yes BUILD_ICE_BT=no TEST_FLAGS="--c++11"
     - WORK_DIR=${TRAVIS_BUILD_DIR}
+
+cache:
+  directories:
+  - $HOME/.gradle
+  - $HOME/python-deps
+  - $TRAVIS_BUILD_DIR/js/node_modules
 
 # matrix:
 #   include:
