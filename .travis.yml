@@ -54,6 +54,7 @@ cache:
 
 before_install:
 - if [ "${TRAVIS_OS_NAME}" == "osx" ]; then
+      sw_vers -productVersion
       brew update;
       brew upgrade --all;
       brew tap zeroc-ice/tap;
