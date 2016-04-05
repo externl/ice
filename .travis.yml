@@ -20,6 +20,12 @@ cache:
   - $HOME/.gradle
   - js/node_modules
 
+os:
+  - linux
+  - osx
+
+osx_image: xcode7.3
+
 env:
   global:
     - CXX=g++-5
@@ -33,14 +39,14 @@ env:
     - WORK_DIR=${TRAVIS_BUILD_DIR}/cpp CPP11_MAPPING=yes BUILD_ICE_BT=no TEST_FLAGS="--c++11"
     - WORK_DIR=${TRAVIS_BUILD_DIR}
 
-matrix:
-  include:
-    - env: WORK_DIR=${TRAVIS_BUILD_DIR}/cpp CPP11_MAPPING=yes BUILD_ICE_BT=no TEST_FLAGS="--c++11"
-      os: osx
-      osx_image: xcode7.3
-    - env: WORK_DIR=${TRAVIS_BUILD_DIR}
-      os: osx
-      osx_image: xcode7.3
+# matrix:
+#   include:
+#     - env: WORK_DIR=${TRAVIS_BUILD_DIR}/cpp CPP11_MAPPING=yes BUILD_ICE_BT=no TEST_FLAGS="--c++11"
+#       os: osx
+#       osx_image: xcode7.3
+#     - env: WORK_DIR=${TRAVIS_BUILD_DIR}
+#       os: osx
+#       osx_image: xcode7.3
 
 python:
 - "2.7"
