@@ -20,6 +20,13 @@ cache:
   - $HOME/.gradle
   - js/node_modules
 
+matrix:
+  include:
+    - env: OSX=10.11
+      os: osx
+      osx_image: xcode7.3
+    - os: linux
+
 env:
   global:
     - CXX=g++-5
@@ -56,7 +63,7 @@ script:
 - cd ${WORK_DIR}
 - python allTests.py ${TEST_FLAGS} --debug --env --protocol=ssl
 
-notifications:
-  email: travis-ci@zeroc.com
-  slack:
-    secure: TywLzzH1Hx3Pb5I4s4wxbEZ9nOAPkamZDqHBOkpLSNSRa2iSk6n5GcQi5bnw0Ct59oTEytO/8fNP6mYwf5G2rrXGWpcdgSdyLMcUk6ASeO7ANv7xLKhVWbbOoVuZxFJvIG5mTYpCa3R58EtchQErzdyf3rRMN3rq/ZBmocFMcRY=
+# notifications:
+#   email: travis-ci@zeroc.com
+#   slack:
+#     secure: TywLzzH1Hx3Pb5I4s4wxbEZ9nOAPkamZDqHBOkpLSNSRa2iSk6n5GcQi5bnw0Ct59oTEytO/8fNP6mYwf5G2rrXGWpcdgSdyLMcUk6ASeO7ANv7xLKhVWbbOoVuZxFJvIG5mTYpCa3R58EtchQErzdyf3rRMN3rq/ZBmocFMcRY=
