@@ -1,5 +1,4 @@
 sudo: false
-language: python
 addons:
   apt:
     sources:
@@ -48,10 +47,11 @@ env:
 #       os: osx
 #       osx_image: xcode7.3
 
-python:
-- "2.7"
-
 before_install:
+- if [ "$(uname)" = "Darwin" ]; then
+      brew tap zeroc-ice/tap;
+      brew install berkeley-db53 mcpp;
+  fi
 - git clone https://github.com/zeroc-ice/mcpp.git mcpp
 - wget https://github.com/LMDB/lmdb/archive/LMDB_${LMDB_REVISION}.tar.gz
 - tar xvf LMDB_${LMDB_REVISION}.tar.gz
