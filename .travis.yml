@@ -54,6 +54,7 @@ env:
 before_install:
 - if [ "$(uname)" = "Darwin" ]; then
       brew tap zeroc-ice/tap;
+      brew tap homebrew/homebrew-php;
       brew install berkeley-db53 python python3 ruby php70;
   fi
 - git clone https://github.com/zeroc-ice/mcpp.git mcpp
