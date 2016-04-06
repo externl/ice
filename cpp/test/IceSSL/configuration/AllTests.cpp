@@ -425,12 +425,21 @@ allTests(const CommunicatorPtr& communicator, const string& testDir, bool p12, b
 {
 #ifdef __APPLE__
     bool isElCapitan = false;
+    bool elCapitanSSL3Disabled = false;
     vector<char> s(256);
     size_t size = s.size();
     int ret = sysctlbyname("kern.osrelease", &s[0], &size, NULL, 0);
     if(ret == 0)
     {
         isElCapitan = string(&s[0]).find("15.") == 0;
+        if(isElCapitan)
+        {
+            string str = string(&s[0]);
+            size_t first = str.find_first_of(".");
+            size_t last = str.find_last_of(".");
+            int minorVersion = atoi(str.substr(first + 1, last - first - 1).c_str());
+            elCapitanSSL3Disabled = minorVersion <= 2;
+        }
     }
 #endif
 
@@ -1559,12 +1568,15 @@ allTests(const CommunicatorPtr& communicator, const string& testDir, bool p12, b
             Test::ServerPrxPtr server = fact->createServer(d);
             try
             {
-                // OS X 10.11 versions prior to 10.11.2 will throw an exception as SSLv3 is totally disabled.
                 server->ice_ping();
             }
             catch(const LocalException&)
             {
-                test(false);
+                // OS X 10.11 versions prior to 10.11.2 will throw an exception as SSLv3 is totally disabled.
+                if(!elCapitanSSL3Disabled)
+                {
+                    test(false);
+                }
             }
             fact->destroyServer(server);
             comm->destroy();
