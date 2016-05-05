@@ -38,7 +38,7 @@ before_install:
 - tar xvf LMDB_${LMDB_REVISION}.tar.gz
 
 install:
-- make -C ${MCPP_HOME} -j3
+- make -C ${MCPP_HOME}
 - mkdir -p ${LMDB_HOME}/bin
 - mkdir -p ${LMDB_HOME}/lib
 - mkdir -p ${LMDB_HOME}/include
