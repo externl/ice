@@ -1,1 +1,3 @@
-buildAndTest
+buildAndTest {
+    distBranch = "master"
+}
