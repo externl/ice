@@ -1,1 +1,3 @@
-buildAndTest()
+buildAndTest {
+    branch = "master"
+}
