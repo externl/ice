@@ -1,3 +1,8 @@
-buildAndTest {
-    distBranch = "master"
+//buildAndTest {
+//    distBranch = "master"
+//}
+
+node('osx') {
+    checkout scm
+    make
 }
