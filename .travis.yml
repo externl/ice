@@ -28,14 +28,9 @@ env:
     - PYTHONPATH=${PYTHONUSERBASE}
 
   matrix:
-    - WORK_DIR=${TRAVIS_BUILD_DIR}/cpp SKIP="IceBT" CONFIGS="cpp11-shared" TEST_FLAGS="--c++11"
-    - WORK_DIR=${TRAVIS_BUILD_DIR}
-
-cache:
-  directories:
-  - $HOME/.gradle
-  - $HOME/python-deps
-  - $TRAVIS_BUILD_DIR/js/node_modules
+    # - WORK_DIR=${TRAVIS_BUILD_DIR}/cpp SKIP="IceBT" CONFIGS="cpp11-shared" TEST_FLAGS="--c++11"
+    - WORK_DIR=${TRAVIS_BUILD_DIR}/cpp
+    # - WORK_DIR=${TRAVIS_BUILD_DIR}
 
 before_install:
 - git clone https://github.com/zeroc-ice/mcpp.git mcpp
@@ -61,3 +56,124 @@ notifications:
   email: travis-ci@zeroc.com
   slack:
     secure: TywLzzH1Hx3Pb5I4s4wxbEZ9nOAPkamZDqHBOkpLSNSRa2iSk6n5GcQi5bnw0Ct59oTEytO/8fNP6mYwf5G2rrXGWpcdgSdyLMcUk6ASeO7ANv7xLKhVWbbOoVuZxFJvIG5mTYpCa3R58EtchQErzdyf3rRMN3rq/ZBmocFMcRY=
+
+cache:
+  directories:
+  - $HOME/.gradle
+  - $HOME/python-deps
+  - $TRAVIS_BUILD_DIR/js/node_modules
+  - $TRAVIS_BUILD_DIR/cpp/src/Glacier2/build
+  - $TRAVIS_BUILD_DIR/cpp/src/Glacier2CryptPermissionsVerifier/build
+  - $TRAVIS_BUILD_DIR/cpp/src/Glacier2Lib/build
+  - $TRAVIS_BUILD_DIR/cpp/src/Ice/build
+  - $TRAVIS_BUILD_DIR/cpp/src/IceBox/build
+  - $TRAVIS_BUILD_DIR/cpp/src/IceDB/build
+  - $TRAVIS_BUILD_DIR/cpp/src/IceDiscovery/build
+  - $TRAVIS_BUILD_DIR/cpp/src/IceGrid/build
+  - $TRAVIS_BUILD_DIR/cpp/src/IceGridLib/build
+  - $TRAVIS_BUILD_DIR/cpp/src/IceLocatorDiscovery/build
+  - $TRAVIS_BUILD_DIR/cpp/src/IcePatch2/build
+  - $TRAVIS_BUILD_DIR/cpp/src/IcePatch2Lib/build
+  - $TRAVIS_BUILD_DIR/cpp/src/IceSSL/build
+  - $TRAVIS_BUILD_DIR/cpp/src/IceStorm/build
+  - $TRAVIS_BUILD_DIR/cpp/src/IceStormLib/build
+  - $TRAVIS_BUILD_DIR/cpp/src/IceUtil/build
+  - $TRAVIS_BUILD_DIR/cpp/src/IceXML/build
+  - $TRAVIS_BUILD_DIR/cpp/src/Slice/build
+  - $TRAVIS_BUILD_DIR/cpp/src/slice2confluence/build
+  - $TRAVIS_BUILD_DIR/cpp/src/slice2cpp/build
+  - $TRAVIS_BUILD_DIR/cpp/src/slice2cs/build
+  - $TRAVIS_BUILD_DIR/cpp/src/slice2html/build
+  - $TRAVIS_BUILD_DIR/cpp/src/slice2java/build
+  - $TRAVIS_BUILD_DIR/cpp/src/slice2js/build
+  - $TRAVIS_BUILD_DIR/cpp/src/slice2objc/build
+  - $TRAVIS_BUILD_DIR/cpp/src/slice2php/build
+  - $TRAVIS_BUILD_DIR/cpp/src/slice2py/build
+  - $TRAVIS_BUILD_DIR/cpp/src/slice2rb/build
+  - $TRAVIS_BUILD_DIR/cpp/test/Common/build
+  - $TRAVIS_BUILD_DIR/cpp/test/Glacier2/attack/build
+  - $TRAVIS_BUILD_DIR/cpp/test/Glacier2/dynamicFiltering/build
+  - $TRAVIS_BUILD_DIR/cpp/test/Glacier2/override/build
+  - $TRAVIS_BUILD_DIR/cpp/test/Glacier2/router/build
+  - $TRAVIS_BUILD_DIR/cpp/test/Glacier2/sessionControl/build
+  - $TRAVIS_BUILD_DIR/cpp/test/Glacier2/sessionHelper/build
+  - $TRAVIS_BUILD_DIR/cpp/test/Glacier2/ssl/build
+  - $TRAVIS_BUILD_DIR/cpp/test/Glacier2/staticFiltering/build
+  - $TRAVIS_BUILD_DIR/cpp/test/Ice/acm/build
+  - $TRAVIS_BUILD_DIR/cpp/test/Ice/adapterDeactivation/build
+  - $TRAVIS_BUILD_DIR/cpp/test/Ice/admin/build
+  - $TRAVIS_BUILD_DIR/cpp/test/Ice/ami/build
+  - $TRAVIS_BUILD_DIR/cpp/test/Ice/background/build
+  - $TRAVIS_BUILD_DIR/cpp/test/Ice/binding/build
+  - $TRAVIS_BUILD_DIR/cpp/test/Ice/checksum/build
+  - $TRAVIS_BUILD_DIR/cpp/test/Ice/custom/build
+  - $TRAVIS_BUILD_DIR/cpp/test/Ice/defaultServant/build
+  - $TRAVIS_BUILD_DIR/cpp/test/Ice/defaultValue/build
+  - $TRAVIS_BUILD_DIR/cpp/test/Ice/dispatcher/build
+  - $TRAVIS_BUILD_DIR/cpp/test/Ice/echo/build
+  - $TRAVIS_BUILD_DIR/cpp/test/Ice/enums/build
+  - $TRAVIS_BUILD_DIR/cpp/test/Ice/exceptions/build
+  - $TRAVIS_BUILD_DIR/cpp/test/Ice/facets/build
+  - $TRAVIS_BUILD_DIR/cpp/test/Ice/faultTolerance/build
+  - $TRAVIS_BUILD_DIR/cpp/test/Ice/gc/build
+  - $TRAVIS_BUILD_DIR/cpp/test/Ice/hash/build
+  - $TRAVIS_BUILD_DIR/cpp/test/Ice/hold/build
+  - $TRAVIS_BUILD_DIR/cpp/test/Ice/info/build
+  - $TRAVIS_BUILD_DIR/cpp/test/Ice/inheritance/build
+  - $TRAVIS_BUILD_DIR/cpp/test/Ice/interceptor/build
+  - $TRAVIS_BUILD_DIR/cpp/test/Ice/invoke/build
+  - $TRAVIS_BUILD_DIR/cpp/test/Ice/location/build
+  - $TRAVIS_BUILD_DIR/cpp/test/Ice/logger/build
+  - $TRAVIS_BUILD_DIR/cpp/test/Ice/metrics/build
+  - $TRAVIS_BUILD_DIR/cpp/test/Ice/networkProxy/build
+  - $TRAVIS_BUILD_DIR/cpp/test/Ice/objects/build
+  - $TRAVIS_BUILD_DIR/cpp/test/Ice/operations/build
+  - $TRAVIS_BUILD_DIR/cpp/test/Ice/optional/build
+  - $TRAVIS_BUILD_DIR/cpp/test/Ice/plugin/build
+  - $TRAVIS_BUILD_DIR/cpp/test/Ice/properties/build
+  - $TRAVIS_BUILD_DIR/cpp/test/Ice/proxy/build
+  - $TRAVIS_BUILD_DIR/cpp/test/Ice/retry/build
+  - $TRAVIS_BUILD_DIR/cpp/test/Ice/servantLocator/build
+  - $TRAVIS_BUILD_DIR/cpp/test/Ice/services/build
+  - $TRAVIS_BUILD_DIR/cpp/test/Ice/slicing/exceptions/build
+  - $TRAVIS_BUILD_DIR/cpp/test/Ice/slicing/objects/build
+  - $TRAVIS_BUILD_DIR/cpp/test/Ice/stream/build
+  - $TRAVIS_BUILD_DIR/cpp/test/Ice/stringConverter/build
+  - $TRAVIS_BUILD_DIR/cpp/test/Ice/threadPoolPriority/build
+  - $TRAVIS_BUILD_DIR/cpp/test/Ice/timeout/build
+  - $TRAVIS_BUILD_DIR/cpp/test/Ice/udp/build
+  - $TRAVIS_BUILD_DIR/cpp/test/IceBox/admin/build
+  - $TRAVIS_BUILD_DIR/cpp/test/IceBox/configuration/build
+  - $TRAVIS_BUILD_DIR/cpp/test/IceDiscovery/simple/build
+  - $TRAVIS_BUILD_DIR/cpp/test/IceGrid/activation/build
+  - $TRAVIS_BUILD_DIR/cpp/test/IceGrid/admin/build
+  - $TRAVIS_BUILD_DIR/cpp/test/IceGrid/allocation/build
+  - $TRAVIS_BUILD_DIR/cpp/test/IceGrid/deployer/build
+  - $TRAVIS_BUILD_DIR/cpp/test/IceGrid/distribution/build
+  - $TRAVIS_BUILD_DIR/cpp/test/IceGrid/noRestartUpdate/build
+  - $TRAVIS_BUILD_DIR/cpp/test/IceGrid/replicaGroup/build
+  - $TRAVIS_BUILD_DIR/cpp/test/IceGrid/replication/build
+  - $TRAVIS_BUILD_DIR/cpp/test/IceGrid/session/build
+  - $TRAVIS_BUILD_DIR/cpp/test/IceGrid/simple/build
+  - $TRAVIS_BUILD_DIR/cpp/test/IceGrid/update/build
+  - $TRAVIS_BUILD_DIR/cpp/test/IceSSL/configuration/build
+  - $TRAVIS_BUILD_DIR/cpp/test/IceStorm/federation/build
+  - $TRAVIS_BUILD_DIR/cpp/test/IceStorm/federation2/build
+  - $TRAVIS_BUILD_DIR/cpp/test/IceStorm/rep1/build
+  - $TRAVIS_BUILD_DIR/cpp/test/IceStorm/repgrid/build
+  - $TRAVIS_BUILD_DIR/cpp/test/IceStorm/repstress/build
+  - $TRAVIS_BUILD_DIR/cpp/test/IceStorm/single/build
+  - $TRAVIS_BUILD_DIR/cpp/test/IceStorm/stress/build
+  - $TRAVIS_BUILD_DIR/cpp/test/IceUtil/condvar/build
+  - $TRAVIS_BUILD_DIR/cpp/test/IceUtil/ctrlCHandler/build
+  - $TRAVIS_BUILD_DIR/cpp/test/IceUtil/inputUtil/build
+  - $TRAVIS_BUILD_DIR/cpp/test/IceUtil/priority/build
+  - $TRAVIS_BUILD_DIR/cpp/test/IceUtil/sha1/build
+  - $TRAVIS_BUILD_DIR/cpp/test/IceUtil/stacktrace/build
+  - $TRAVIS_BUILD_DIR/cpp/test/IceUtil/thread/build
+  - $TRAVIS_BUILD_DIR/cpp/test/IceUtil/timer/build
+  - $TRAVIS_BUILD_DIR/cpp/test/IceUtil/unicode/build
+  - $TRAVIS_BUILD_DIR/cpp/test/IceUtil/uuid/build
+  - $TRAVIS_BUILD_DIR/cpp/test/Slice/keyword/build
+  - $TRAVIS_BUILD_DIR/cpp/test/Slice/macros/build
+  - $TRAVIS_BUILD_DIR/cpp/test/Slice/structure/build
