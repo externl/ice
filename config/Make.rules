@@ -130,8 +130,8 @@ lmdb_home 		:= $(LMDB_HOME)
 define make-thirdparty
 ifneq ($($1_home),)
 # Check for 3rd party libraries either in home/lib<platform specific subdir> or home/lib
-$1_libdir	?= $$(if $$(wildcard $$($1_home)/lib$$(call platform-var,installdir,$$1,$$2,$$3)),\
-			$$($1_home)/lib$$(call platform-var,installdir,$$1,$$2,$$3),$$($1_home)/lib)
+$1_libdir	?= $$(strip $$(if $$(wildcard $$($1_home)/lib$$(call platform-var,installdir,$$1,$$2,$$3)),\
+			$$($1_home)/lib$$(call platform-var,installdir,$$1,$$2,$$3),$$($1_home)/lib))
 $1_includedir	?= $$($1_home)/include
 endif
 $1_ldflags	?= -l$1
@@ -192,7 +192,19 @@ platform_targetdir	?= /$2
 platform_installdir	?=
 platform_dependency	?= $2
 
+#
+# Other variables which can be overriden by Make.rules.<platform>
+#
+
+# $(call depend_cppflags,$1=dependencyfile,$2=targetfile)
+depend-cppflags		?= -MT $2 -MMD -MP -MF $1
+
+# $(call rpath-ldflag,$1=rpath)
+rpath-ldflag 		?= -Wl,-rpath,$1
+
+#
 # The projects and tests variable are used to load projects/tests in Makefile.mk fragments
+#
 projects :=
 tests :=
 
@@ -250,8 +262,6 @@ get-all-deps		= $(call unique,$(if $($1_dependencies),\
 #
 # Helpers to compute cppflags/ldflags for dependencies, libraries and system libraries
 #
-rpath-ldflag 		?= -Wl,-rpath,$1
-
 ifneq ($(embedded_runpath),no)
 ifeq ($(embedded_runpath_prefix),)
 # Add rpath relative to the path of the loader if linking with library from different directory.
@@ -296,8 +306,12 @@ relpathfromdir 	= $(if $(findstring /,$1),$(call relpathfromdir,$(call dirname,$
 # This also supports default value for platform/configuration variables. So if
 # osx_objdir isn't defined, we'll use the default value platform_objdir.
 #
-var-or-dflt		= $(call $(if $(filter undefined,$(origin $1_$3)),$2_$3,$1_$3),$4,$5,$6,$7,$8) \
-			  $(call $4_$3[$1],$3,$4,$5,$6,$7) $(call $($4_project)_$3[$1],$3,$4,$5,$6,$7)
+var-or-dflt		= $(call $(if $(filter-out undefined,$(origin $1_$3[$4])),$1_$3[$4],\
+				 $(if $(filter-out undefined,$(origin $2_$3[$4])),$2_$3[$4],\
+				 $(if $(filter-out undefined,$(origin $1_$3[$($4_project)])),$1_$3[$($4_project)],\
+				 $(if $(filter-out undefined,$(origin $2_$3[$($4_project)])),$2_$3[$($4_project)],\
+				 $(if $(filter-out undefined,$(origin $1_$3)),$1_$3,\
+				 $2_$3))))),$4,$5,$6,$7,$8)
 platform-var		= $(strip $(foreach c,$3,$(call var-or-dflt,$c,platform,$1,$2,$3,$4,$5)))
 config-var		= $(strip $(foreach c,$(subst -,$(space),$4),$(call var-or-dflt,$c,config,$1,$2,$3,$4,$5,$c)))
 platform-and-config-var = $(strip $(platform-var) $(config-var))
