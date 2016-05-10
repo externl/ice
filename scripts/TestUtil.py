@@ -128,7 +128,7 @@ def isSparc():
         return False
 
 def isAIX():
-    return sys.platform in ['aix4', 'aix5']
+    return sys.platform.startswith("aix")
 
 def isDarwin():
     return sys.platform == "darwin"
@@ -342,6 +342,9 @@ toplevel = path[0]
 if isWin32():
     if os.environ.get("PLATFORM", "").upper() == "X64":
         x64 = True
+elif isAIX():
+    if os.environ.get("OBJECT_MODE", "") == "64":
+        x64 = True
 else:
     p = subprocess.Popen("uname -m", shell = True, stdout = subprocess.PIPE, stderr = subprocess.STDOUT)
     if(p.wait() != 0):
@@ -390,8 +393,12 @@ else:
 #
 iceVersion = None
 try:
-    config = open(os.path.join(toplevel, "config", "Make.rules"), "r")
-    iceVersion = re.search("version[\t\s]*= ([0-9]+\.[0-9]+(\.[0-9]+|[ab][0-9]*))", config.read()).group(1)
+    if isWin32():
+        config = open(os.path.join(toplevel, "config", "Ice.props"), "r")
+        iceVersion = re.search("<IceVersion>[\t\s]*([0-9]+\.[0-9]+(\.[0-9]+|[ab][0-9]*))</IceVersion>", config.read()).group(1)
+    else:
+        config = open(os.path.join(toplevel, "config", "Make.rules"), "r")
+        iceVersion = re.search("version[\t\s]*= ([0-9]+\.[0-9]+(\.[0-9]+|[ab][0-9]*))", config.read()).group(1)
     config.close()
 except:
     print("error: couldn't figure Ice version")
@@ -838,17 +845,10 @@ def getIceBox():
     return iceBox
 
 def getIceBoxAdmin():
-    #
-    # Get and return the path of the IceBoxAdmin executable
-    #
-    lang = getDefaultMapping()
-    if lang == "java":
-        iceBoxAdmin = "IceBox.Admin"
+    if getDefaultMapping() == "java":
+        return "IceBox.Admin"
     else:
         return getIceExe("iceboxadmin")
-        iceBoxAdmin = "iceboxadmin"
-
-    return iceBoxAdmin
 
 def getIceGridAdmin():
     return getIceExe("icegridadmin")
@@ -1928,7 +1928,10 @@ def getTestEnv(lang, testdir):
         if lang == "java":
             addLdPath(os.path.join(getIceDir("cpp"), "bin", "x64" if x64 else ""), env) # Add bin for db53_vc100.dll
         addLdPath(getCppLibDir(lang), env)
+    elif isAIX():
+        addLdPath(getCppLibDir(lang), env)
     elif lang in ["python", "ruby", "php", "js", "objective-c"]:
+        # C++ binaries use rpath $ORIGIN or similar to find the Ice libraries 
         addLdPath(getCppLibDir(lang), env)
 
     if lang == "java":

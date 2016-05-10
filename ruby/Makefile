@@ -15,7 +15,7 @@ include $(top_srcdir)/config/Make.rules
 #
 # Load C++ dependencies
 #
-$(eval $(call load-dependencies,$(addprefix $(top_srcdir)/cpp/src/,IceUtil Slice Ice IceSSL)))
+$(eval $(call load-dependencies,$(addprefix $(top_srcdir)/cpp/src/,Ice IceSSL)))
 $(eval $(call load-translator-dependencies,$(top_srcdir)/cpp/src/slice2rb))
 
 #
@@ -32,7 +32,7 @@ include $(shell find $(lang_srcdir) -name Makefile.mk)
 # Make the projects (this expands all the build configuration and defines rules for all
 # the components).
 #
-$(foreach p,$(projects),$(eval $(call make-project,$(p))))
+$(call make-projects,$(projects))
 
 install:: | $(DESTDIR)$(install_rubydir)
 	$(E) "Installing generated code"

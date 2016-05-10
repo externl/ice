@@ -1,4 +1,3 @@
-
 # **********************************************************************
 #
 # Copyright (c) 2003-2015 ZeroC, Inc. All rights reserved.
@@ -77,7 +76,8 @@ define make-objects
 # other modules are built first.
 #
 ifeq ($(wildcard $3/*.d),)
-$(addprefix $3/,$(call source-to-object,$4)): $(addprefix $2/,$(call generated-to-source,$4,$($7_targetext))) $5
+$(addprefix $3/,$(call source-to-object,$4)): $(addprefix $2/,$(call generated-to-source,$4,$($7_targetext))) \
+						$(foreach d,$5,$($d_targets))
 endif
 
 $3/%.d: ;
@@ -199,7 +199,7 @@ get-static-library-targets = $2/$(call mklibname,$1)
 #
 define make-shared-library
 
-$2/$(call mkshlibfilename,$1): $3
+$2/$(call mkshlibfilename,$1): $3 $(foreach d,$4,$($d_targets))
 	$(E) "Linking [$6-$7] $$@"
 	$(Q)$(MKDIR) -p $2
 	$(Q)$(call mkshlib,$$@,$(strip $3),$(call mksoname,$1),$(strip $5),$6)
@@ -237,7 +237,7 @@ get-shared-library-targets 	= $(addprefix $2/,$(call mkshlibfilename,$1) $(call 
 # Defines rules for building the shared module (this is used to build the Python/Ruby/PHP modules)
 #
 define make-shared-module
-$2/$1: $3 $4
+$2/$1: $3 $(foreach d,$4,$($d_targets))
 	$(E) "Linking [$6-$7] $$@"
 	$(Q)$(MKDIR) -p $2
 	$(Q)$(call mkshlib,$$@,$(strip $3),,$(strip $5),$6)
@@ -260,7 +260,7 @@ get-shared-module-targets = $2/$1
 # Defines a rule for building the program <exename> in <bindir> with the objects <objects>
 #
 define make-program
-$2/$1$(EXE_EXT): $3 $(if $(filter static%,$7),$4)
+$2/$1$(EXE_EXT): $3 $(foreach d,$4,$($d_targets))
 	$(E) "Linking [$6-$7] $$@"
 	$(Q)$(MKDIR) -p $2
 	@$(RM) $$@
@@ -288,7 +288,11 @@ define create-component-with-config-targets
 #
 # Transform the dependencies to [platform-configuration] specific dependencies.
 #
-$5_dependencies	= $$(foreach d,$$($2_dependencies),$$(call make-dependency,$$d,$2,$3,$4))
+$5_dependencies = $$(foreach d,$$(call platform-and-config-var,dependencies,$2,$3,$4),$$(call make-dependency,$$d,$2,$3,$4))
+$5_dependencies	+= $$(foreach d,$$($2_dependencies),$$(call make-dependency,$$d,$2,$3,$4))
+
+$5_libs		:= $$($2_libs)
+$5_system_libs	:= $$($2_system_libs)
 
 #
 # The installation directory
@@ -318,7 +322,7 @@ $5_targets 	:= $$(call get-$$($5_targetrule)-targets,$$($5_targetname),$$($5_tar
 # to allow dependencies to be used as prerequesties. For example, objects for
 # IceSSL[osx-shared] depend on Ice[osx-shared], see make-objects.
 #
-.SECONDARY: $5
+.PHONY: $5
 $5: $$($5_targets)
 
 endef
@@ -407,8 +411,8 @@ $$($5_objdir)/$$(call source-to-dependency,$$($2_sources)): | $$($5_objdir)
 #
 # Object rules
 #
-$$(eval $$(call make-objects,$$($2_srcdir),$$($1_generated_srcdir),$$($5_objdir),\
-	$$($2_sources),$$($5_dependencies),$$($5_cppflags),$$($1_slicecompiler),$$($5_platform),$$($5_config)))
+$$(foreach d,$$($2_srcdirs),$$(eval $$(call make-objects,$$d,$$($1_generated_srcdir),$$($5_objdir),\
+	$$($2_sources),$$($5_dependencies),$$($5_cppflags),$$($1_slicecompiler),$$($5_platform),$$($5_config))))
 
 #
 # Target rule
@@ -530,9 +534,11 @@ $2_sources 	:= $$(foreach e,$(source-extensions),$$(wildcard $$($2_srcdir)/*.$$(
 ifneq ($$($2_slicedir),)
     $2_sources 	+= $$(wildcard $$($2_slicedir)/*.ice)
 endif
+$2_sources      += $$($2_extra_sources)
 $2_sources      := $$(call unique,$$($2_sources))
 endif
 $2_sources	:= $$(filter-out $$(patsubst $(lang_srcdir)/%,%,$$($2_excludes)),$$($2_sources))
+$2_srcdirs	:= $$(call files-to-dirs,$$($2_sources))
 
 #
 # Compute the list of slice files from the sources and gather the location
@@ -627,11 +633,6 @@ $1_generated_includedir := $$(or $$($1_generated_includedir),$1/generated)
 
 # Is this a multi-component project?
 $1_multicomp	:= $(word 2,$($1_programs) $($1_libraries))
-
-#
-# Create target variables for this project.
-#
-$$(eval $$(call create-project-targets,$1))
 
 #
 # Components add slice and object directories, slice files, generated
@@ -780,3 +781,8 @@ $(call create-project-targets,$1)
 projects := $$(tmp_projects)
 endef
 
+#
+# Create the targets for the given projects and then make the project rules.
+#
+make-projects = $(foreach p,$1,$(eval $(call create-project-targets,$p)))\
+		$(foreach p,$1,$(eval $(call $(or $2,make-project),$p)))

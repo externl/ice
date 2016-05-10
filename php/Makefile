@@ -16,7 +16,7 @@ include $(top_srcdir)/config/Make.rules
 # Load C++ dependencies
 #
 $(eval $(call load-translator-dependencies,$(top_srcdir)/cpp/src/slice2php))
-$(eval $(call load-dependencies,$(addprefix $(top_srcdir)/cpp/src/,IceUtil Slice Ice IceSSL IceDiscovery IceLocatorDiscovery)))
+$(eval $(call load-dependencies,$(addprefix $(top_srcdir)/cpp/src/,Ice IceSSL IceDiscovery IceLocatorDiscovery)))
 
 #
 # Load php rules after loading C++ dependencies
@@ -36,7 +36,7 @@ endif
 # Make the projects (this expands all the build configuration and defines rules for all
 # the components).
 #
-$(foreach p,$(projects),$(eval $(call make-project,$(p))))
+$(call make-projects,$(projects))
 
 install:: | $(DESTDIR)$(install_phpdir)
 	$(E) "Installing generated code"
