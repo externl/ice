@@ -68,6 +68,9 @@ bld/
 [Oo]bj/
 [Ll]og/
 
+# VS
+*.opendb
+
 # Visual Studio 2015 cache/options directory
 .vs/
 
