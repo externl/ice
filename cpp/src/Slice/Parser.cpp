@@ -5756,6 +5756,7 @@ Slice::Operation::returnsData() const
             return true;
         }
     }
+    // TODO: remove this check once we deprecate exception specifications
     if(!throws().empty())
     {
         return true;
