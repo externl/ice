@@ -1,0 +1,4 @@
+<Project>
+  <Import Project="$(MSBuildCachePackageRoot)\build\$(MSBuildCachePackageName).targets"
+    Condition="Exists('$(MSBuildCachePackageRoot)\build\$(MSBuildCachePackageName).targets')" />
+</Project>

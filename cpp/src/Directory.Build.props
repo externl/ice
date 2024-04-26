@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="utf-8"?>
+<Project>
+  <PropertyGroup>
+    <MSBuildCachePackageName>Microsoft.MSBuildCache.Local</MSBuildCachePackageName>
+    <MSBuildCachePackageVersion>0.1.271-preview</MSBuildCachePackageVersion>
+    <MSBuildCachePackageRoot>
+      ..\msbuild\packages\$(MSBuildCachePackageName).$(MSBuildCachePackageVersion)</MSBuildCachePackageRoot>
+  </PropertyGroup>
+  <Import Project="$(MSBuildCachePackageRoot)\build\$(MSBuildCachePackageName).props"
+    Condition="Exists('..\..\..\msbuild\packages\zeroc.icebuilder.msbuild.5.0.9\build\zeroc.icebuilder.msbuild.props')" />
+</Project>
