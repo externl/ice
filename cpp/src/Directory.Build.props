@@ -7,5 +7,5 @@
       ..\msbuild\packages\$(MSBuildCachePackageName).$(MSBuildCachePackageVersion)</MSBuildCachePackageRoot>
   </PropertyGroup>
   <Import Project="$(MSBuildCachePackageRoot)\build\$(MSBuildCachePackageName).props"
-    Condition="Exists('..\..\..\msbuild\packages\zeroc.icebuilder.msbuild.5.0.9\build\zeroc.icebuilder.msbuild.props')" />
+    Condition="Exists('$(MSBuildCachePackageRoot)\build\$(MSBuildCachePackageName).props')" />
 </Project>
