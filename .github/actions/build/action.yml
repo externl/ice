@@ -43,13 +43,15 @@ runs:
     # Windows
     - name: Build C++ and Python
       run: |
-        msbuild /m ${{ inputs.build_flags }} /t:BuildDist cpp/msbuild/ice.proj
+        msbuild /m /graph  /reportfileaccesses ${{ inputs.build_flags }} -t:restore -p:RestorePackagesConfig=true cpp/msbuild/ice.sln
+        msbuild /m /graph /reportfileaccess ${{ inputs.build_flags }} /t:build cpp/msbuild/ice.sln
         msbuild /m ${{ inputs.build_flags }} python/msbuild/ice.proj
       shell: powershell
       if: runner.os == 'Windows' && inputs.build_cpp_and_python == 'true'
 
     - name: Build
       working-directory: ${{ inputs.working_directory }}
-      run: msbuild /m ${{ inputs.build_flags }} ${{ inputs.msbuild_project }}
+      run: |
+        msbuild /m ${{ inputs.build_flags }} ${{ inputs.msbuild_project }}
       shell: powershell
       if: runner.os == 'Windows'

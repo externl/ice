@@ -171,17 +171,17 @@ runs:
       shell: bash
       if: inputs.use_ccache == 'true' && (runner.os == 'macOS' || runner.os == 'Linux')
 
-    # - name: Setup Windows Cache
-    #   uses: actions/cache@v4
-    #   with:
-    #     path: |
-    #       **/bin/x64
-    #       **/lib/x64
-    #       **/msbuild/**/x64
-    #       **/include/generated
-
-    #     key: ci-${{ runner.os }}-${{ matrix.config }}-${{ github.sha }}
-    #     restore-keys: |
-    #       ci-${{ runner.os }}-${{ matrix.config }}-
-    #       ci-${{ runner.os }}-
-    #   if: inputs.cache && runner.os == 'Windows'
+    - name: Setup Windows Cache
+      uses: actions/cache@v4
+      with:
+        path: |
+          C:\MSBuildCache
+          # **/bin/x64
+          # **/lib/x64
+          # **/msbuild/**/x64
+          # **/include/generated
+        key: ci-${{ runner.os }}-${{ matrix.config }}-${{ github.sha }}
+        restore-keys: |
+          ci-${{ runner.os }}-${{ matrix.config }}-
+          ci-${{ runner.os }}-
+      if: inputs.cache && runner.os == 'Windows'

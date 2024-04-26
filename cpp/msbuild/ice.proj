@@ -1,5 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
-<Project DefaultTargets="Build" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+<Project DefaultTargets="Build"
+    xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
 
     <PropertyGroup Condition="'$(Configuration)' == ''">
         <Configuration>Release</Configuration>
@@ -34,11 +35,10 @@
     </Target>
 
     <Target Name="DownloadSymbols" DependsOnTargets="TestNuGetRestore" Condition="'$(ICE_BIN_DIST)' == 'all'">
-        <Exec IgnoreExitCode="True"
-              Command="symchk /r $(MSBuildThisFileDirectory)packages\zeroc.ice.$(DefaultPlatformToolset).$(IceJSONVersion)\build\native\bin\$(Platform)\$(Configuration)\* /s $(SymbolServer)">
+        <Exec IgnoreExitCode="True" Command="symchk /r $(MSBuildThisFileDirectory)packages\zeroc.ice.$(DefaultPlatformToolset).$(IceJSONVersion)\build\native\bin\$(Platform)\$(Configuration)\* /s $(SymbolServer)">
             <Output TaskParameter="ExitCode" PropertyName="ErrorCode"/>
         </Exec>
-        <Warning  Text="PDBs download failed, stack traces might be missing or incomplete" Condition="'$(ErrorCode)' != '0'" />
+        <Warning Text="PDBs download failed, stack traces might be missing or incomplete" Condition="'$(ErrorCode)' != '0'" />
     </Target>
 
     <!-- Ice for C++ builds. -->
@@ -102,27 +102,18 @@
     </Choose>
 
     <!-- Build distribution targets -->
-    <Target Name="BuildDist" DependsOnTargets="NuGetRestore"
-            Condition="'$(ICE_BIN_DIST)' != 'all'">
-        <MSBuild Projects="@(DistSolution)"
-                 BuildInParallel="true"
-                 Properties="%(Properties)"/>
+    <Target Name="BuildDist" DependsOnTargets="NuGetRestore" Condition="'$(ICE_BIN_DIST)' != 'all'">
+        <MSBuild Projects="@(DistSolution)" BuildInParallel="true" Properties="%(Properties)" />
     </Target>
 
     <!-- Clean distribution targets -->
-    <Target Name="CleanDist"
-            Condition="'$(ICE_BIN_DIST)' != 'all'">
-        <MSBuild Projects="@(DistSolution)"
-                 BuildInParallel="true"
-                 Properties="%(Properties)"
-                 Targets="Clean" />
+    <Target Name="CleanDist" Condition="'$(ICE_BIN_DIST)' != 'all'">
+        <MSBuild Projects="@(DistSolution)" BuildInParallel="true" Properties="%(Properties)" Targets="Clean" />
     </Target>
 
     <!-- Build test solution -->
     <Target Name="Build" DependsOnTargets="TestNuGetRestore;BuildDist">
-        <MSBuild Projects="@(TestSolution)"
-                 BuildInParallel="true"
-                 Properties="%(Properties)" />
+        <MSBuild Projects="@(TestSolution)" BuildInParallel="true" Properties="%(Properties)" />
     </Target>
 
     <!-- Clean test solution -->
@@ -131,43 +122,24 @@
     </Target>
 
     <!-- Create nuget packages -->
-    <Target Name="NuGetPack"
-            DependsOnTargets="BuildDist">
+    <Target Name="NuGetPack" DependsOnTargets="BuildDist">
 
         <RemoveDir Directories="zeroc.ice.$(DefaultPlatformToolset)" />
 
-        <MSBuild Projects="ice.nuget.targets"
-                 Properties="Configuration=Debug;Platform=Win32;PackageDirectory=zeroc.ice.$(DefaultPlatformToolset);DefaultBuild=$(DefaultBuild)"
-                 Condition="'$(Platform)|$(Configuration)' == 'Win32|Debug' or '$(BuildAllConfigurations)' == 'yes'" />
-        <MSBuild Projects="ice.nuget.targets"
-                 Properties="Configuration=Debug;Platform=x64;PackageDirectory=zeroc.ice.$(DefaultPlatformToolset);DefaultBuild=$(DefaultBuild)"
-                 Condition="'$(Platform)|$(Configuration)' == 'x64|Debug' or '$(BuildAllConfigurations)' == 'yes'"/>
-        <MSBuild Projects="ice.nuget.targets"
-                 Properties="Configuration=Release;Platform=Win32;PackageDirectory=zeroc.ice.$(DefaultPlatformToolset);DefaultBuild=$(DefaultBuild)"
-                 Condition="'$(Platform)|$(Configuration)' == 'Win32|Release' or '$(BuildAllConfigurations)' == 'yes'"/>
-        <MSBuild Projects="ice.nuget.targets"
-                 Properties="Configuration=Release;Platform=x64;PackageDirectory=zeroc.ice.$(DefaultPlatformToolset);DefaultBuild=$(DefaultBuild)"
-                 Condition="'$(Platform)|$(Configuration)' == 'x64|Release' or '$(BuildAllConfigurations)' == 'yes'"/>
+        <MSBuild Projects="ice.nuget.targets" Properties="Configuration=Debug;Platform=Win32;PackageDirectory=zeroc.ice.$(DefaultPlatformToolset);DefaultBuild=$(DefaultBuild)" Condition="'$(Platform)|$(Configuration)' == 'Win32|Debug' or '$(BuildAllConfigurations)' == 'yes'" />
+        <MSBuild Projects="ice.nuget.targets" Properties="Configuration=Debug;Platform=x64;PackageDirectory=zeroc.ice.$(DefaultPlatformToolset);DefaultBuild=$(DefaultBuild)" Condition="'$(Platform)|$(Configuration)' == 'x64|Debug' or '$(BuildAllConfigurations)' == 'yes'"/>
+        <MSBuild Projects="ice.nuget.targets" Properties="Configuration=Release;Platform=Win32;PackageDirectory=zeroc.ice.$(DefaultPlatformToolset);DefaultBuild=$(DefaultBuild)" Condition="'$(Platform)|$(Configuration)' == 'Win32|Release' or '$(BuildAllConfigurations)' == 'yes'"/>
+        <MSBuild Projects="ice.nuget.targets" Properties="Configuration=Release;Platform=x64;PackageDirectory=zeroc.ice.$(DefaultPlatformToolset);DefaultBuild=$(DefaultBuild)" Condition="'$(Platform)|$(Configuration)' == 'x64|Release' or '$(BuildAllConfigurations)' == 'yes'"/>
 
-        <Copy SourceFiles="$(MSBuildThisFileDirectory)..\README.md"
-              DestinationFiles="zeroc.ice.$(DefaultPlatformToolset)\README.md"
-              Condition="'$(DefaultPlatformToolset)' != 'v100'"/>
+        <Copy SourceFiles="$(MSBuildThisFileDirectory)..\README.md" DestinationFiles="zeroc.ice.$(DefaultPlatformToolset)\README.md" Condition="'$(DefaultPlatformToolset)' != 'v100'"/>
 
-        <Copy SourceFiles="$(MSBuildThisFileDirectory)THIRD_PARTY_LICENSE.txt"
-              DestinationFiles="zeroc.ice.$(DefaultPlatformToolset)\THIRD_PARTY_LICENSE.txt" />
-        <Copy SourceFiles="$(MSBuildThisFileDirectory)..\..\ICE_LICENSE"
-              DestinationFiles="zeroc.ice.$(DefaultPlatformToolset)\ICE_LICENSE.txt" />
-        <Copy SourceFiles="$(MSBuildThisFileDirectory)..\..\LICENSE"
-              DestinationFiles="zeroc.ice.$(DefaultPlatformToolset)\LICENSE.txt" />
-        <Copy SourceFiles="$(MSBuildThisFileDirectory)..\..\logo.png"
-              DestinationFiles="zeroc.ice.$(DefaultPlatformToolset)\logo.png" />
-        <Copy SourceFiles="zeroc.ice.$(DefaultPlatformToolset).nuspec"
-              DestinationFolder="zeroc.ice.$(DefaultPlatformToolset)" />
-        <Copy SourceFiles="zeroc.ice.$(DefaultPlatformToolset).props"
-              DestinationFiles="zeroc.ice.$(DefaultPlatformToolset)\build\native\zeroc.ice.$(DefaultPlatformToolset).props" />
-        <Copy SourceFiles="zeroc.ice.$(DefaultPlatformToolset).targets"
-              DestinationFiles="zeroc.ice.$(DefaultPlatformToolset)\build\native\zeroc.ice.$(DefaultPlatformToolset).targets" />
-        <Exec Command="$(NuGetExe) pack -NoPackageAnalysis -NonInteractive"
-              WorkingDirectory="zeroc.ice.$(DefaultPlatformToolset)"/>
+        <Copy SourceFiles="$(MSBuildThisFileDirectory)THIRD_PARTY_LICENSE.txt" DestinationFiles="zeroc.ice.$(DefaultPlatformToolset)\THIRD_PARTY_LICENSE.txt" />
+        <Copy SourceFiles="$(MSBuildThisFileDirectory)..\..\ICE_LICENSE" DestinationFiles="zeroc.ice.$(DefaultPlatformToolset)\ICE_LICENSE.txt" />
+        <Copy SourceFiles="$(MSBuildThisFileDirectory)..\..\LICENSE" DestinationFiles="zeroc.ice.$(DefaultPlatformToolset)\LICENSE.txt" />
+        <Copy SourceFiles="$(MSBuildThisFileDirectory)..\..\logo.png" DestinationFiles="zeroc.ice.$(DefaultPlatformToolset)\logo.png" />
+        <Copy SourceFiles="zeroc.ice.$(DefaultPlatformToolset).nuspec" DestinationFolder="zeroc.ice.$(DefaultPlatformToolset)" />
+        <Copy SourceFiles="zeroc.ice.$(DefaultPlatformToolset).props" DestinationFiles="zeroc.ice.$(DefaultPlatformToolset)\build\native\zeroc.ice.$(DefaultPlatformToolset).props" />
+        <Copy SourceFiles="zeroc.ice.$(DefaultPlatformToolset).targets" DestinationFiles="zeroc.ice.$(DefaultPlatformToolset)\build\native\zeroc.ice.$(DefaultPlatformToolset).targets" />
+        <Exec Command="$(NuGetExe) pack -NoPackageAnalysis -NonInteractive" WorkingDirectory="zeroc.ice.$(DefaultPlatformToolset)"/>
     </Target>
 </Project>
