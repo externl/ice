@@ -291,7 +291,7 @@ class Instance
             if(Ice._oneOfDone === undefined)
             {
                 Ice._printStackTraces =
-                    this._initData.properties.getPropertyAsIntWithDefault("Ice.PrintStackTraces", 0) > 0;
+                    this._initData.properties.getIcePropertyAsInt("Ice.PrintStackTraces") > 0;
 
                 Ice._oneOfDone = true;
             }
@@ -305,8 +305,7 @@ class Instance
 
             this._defaultsAndOverrides = new DefaultsAndOverrides(this._initData.properties, this._initData.logger);
 
-            const defMessageSizeMax = 1024;
-            let num = this._initData.properties.getPropertyAsIntWithDefault("Ice.MessageSizeMax", defMessageSizeMax);
+            let num = this._initData.properties.getIcePropertyAsInt("Ice.MessageSizeMax");
             if(num < 1 || num > 0x7fffffff / 1024)
             {
                 this._messageSizeMax = 0x7fffffff;
@@ -326,7 +325,7 @@ class Instance
             }
             else
             {
-                num = this._initData.properties.getPropertyAsIntWithDefault("Ice.BatchAutoFlushSize", 1024); // 1MB
+                num = this._initData.properties.getIcePropertyAsInt("Ice.BatchAutoFlushSize"); // 1MB
                 if(num < 1)
                 {
                     this._batchAutoFlushSize = num;
@@ -345,7 +344,7 @@ class Instance
                                             new ACMConfig(this._initData.properties, this._initData.logger,
                                                             "Ice.ACM", new ACMConfig()));
 
-            const toStringModeStr = this._initData.properties.getPropertyWithDefault("Ice.ToStringMode", "Unicode");
+            const toStringModeStr = this._initData.properties.getIceProperty("Ice.ToStringMode");
             if(toStringModeStr === "ASCII")
             {
                 this._toStringMode = Ice.ToStringMode.ASCII;

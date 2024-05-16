@@ -485,7 +485,7 @@ class ReferenceFactory
                 throw new Ice.EndpointParseException("invalid endpoint `" + unknownEndpoints[0] + "' in `" + s + "'");
             }
             else if(unknownEndpoints.length !== 0 &&
-                    this._instance.initializationData().properties.getPropertyAsIntWithDefault("Ice.Warn.Endpoints", 1) > 0)
+                    this._instance.initializationData().properties.getIcePropertyAsInt("Ice.Warn.Endpoints") > 0)
             {
                 const msg = [];
                 msg.push("Proxy contains unknown endpoints:");
@@ -728,7 +728,7 @@ class ReferenceFactory
             //
             // Warn about unknown properties.
             //
-            if(properties.getPropertyAsIntWithDefault("Ice.Warn.UnknownProperties", 1) > 0)
+            if(properties.getIcePropertyAsInt("Ice.Warn.UnknownProperties") > 0)
             {
                 this.checkForUnknownProperties(propertyPrefix);
             }

@@ -20,7 +20,7 @@
             const communicator = this.communicator();
             const out = this.getWriter();
 
-            const defaultProtocol = communicator.getProperties().getPropertyWithDefault("Ice.Default.Protocol", "tcp");
+            const defaultProtocol = communicator.getProperties().getIceProperty("Ice.Default.Protocol");
 
             out.write("testing stringToProxy... ");
             const ref = "test:" + this.getTestEndpoint();

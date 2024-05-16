@@ -164,7 +164,7 @@ class IncomingAsync
                 ex.operation = this._current.operation;
             }
 
-            if(props.getPropertyAsIntWithDefault("Ice.Warn.Dispatch", 1) > 1)
+            if(props.getIcePropertyAsInt("Ice.Warn.Dispatch") > 1)
             {
                 this.warning(ex);
             }
@@ -215,7 +215,7 @@ class IncomingAsync
         }
         else if(ex instanceof Ice.UnknownLocalException)
         {
-            if(props.getPropertyAsIntWithDefault("Ice.Warn.Dispatch", 1) > 0)
+            if(props.getIcePropertyAsInt("Ice.Warn.Dispatch") > 0)
             {
                 this.warning(ex);
             }
@@ -236,7 +236,7 @@ class IncomingAsync
         }
         else if(ex instanceof Ice.UnknownUserException)
         {
-            if(props.getPropertyAsIntWithDefault("Ice.Warn.Dispatch", 1) > 0)
+            if(props.getIcePropertyAsInt("Ice.Warn.Dispatch") > 0)
             {
                 this.warning(ex);
             }
@@ -257,7 +257,7 @@ class IncomingAsync
         }
         else if(ex instanceof Ice.UnknownException)
         {
-            if(props.getPropertyAsIntWithDefault("Ice.Warn.Dispatch", 1) > 0)
+            if(props.getIcePropertyAsInt("Ice.Warn.Dispatch") > 0)
             {
                 this.warning(ex);
             }
@@ -278,7 +278,7 @@ class IncomingAsync
         }
         else if(ex instanceof Ice.LocalException)
         {
-            if(props.getPropertyAsIntWithDefault("Ice.Warn.Dispatch", 1) > 0)
+            if(props.getIcePropertyAsInt("Ice.Warn.Dispatch") > 0)
             {
                 this.warning(ex);
             }
@@ -324,7 +324,7 @@ class IncomingAsync
         }
         else
         {
-            if(props.getPropertyAsIntWithDefault("Ice.Warn.Dispatch", 1) > 0)
+            if(props.getIcePropertyAsInt("Ice.Warn.Dispatch") > 0)
             {
                 this.warning(ex);
             }

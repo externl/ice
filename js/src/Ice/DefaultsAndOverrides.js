@@ -82,7 +82,7 @@ class DefaultsAndOverrides
 
         this.overrideSecure = false;
 
-        value = properties.getPropertyWithDefault("Ice.Default.EndpointSelection", "Random");
+        value = properties.getIceProperty("Ice.Default.EndpointSelection");
         if(value === "Random")
         {
             this.defaultEndpointSelection = EndpointSelectionType.Random;
@@ -98,7 +98,7 @@ class DefaultsAndOverrides
             throw ex;
         }
 
-        this.defaultTimeout = properties.getPropertyAsIntWithDefault("Ice.Default.Timeout", 60000);
+        this.defaultTimeout = properties.getIcePropertyAsInt("Ice.Default.Timeout");
         if(this.defaultTimeout < 1 && this.defaultTimeout !== -1)
         {
             this.defaultTimeout = 60000;
@@ -106,7 +106,7 @@ class DefaultsAndOverrides
                         "': defaulting to 60000");
         }
 
-        this.defaultLocatorCacheTimeout = properties.getPropertyAsIntWithDefault("Ice.Default.LocatorCacheTimeout", -1);
+        this.defaultLocatorCacheTimeout = properties.getIcePropertyAsInt("Ice.Default.LocatorCacheTimeout");
         if(this.defaultLocatorCacheTimeout < -1)
         {
             this.defaultLocatorCacheTimeout = -1;
@@ -114,7 +114,7 @@ class DefaultsAndOverrides
                         properties.getProperty("Ice.Default.LocatorCacheTimeout") + "': defaulting to -1");
         }
 
-        this.defaultInvocationTimeout = properties.getPropertyAsIntWithDefault("Ice.Default.InvocationTimeout", -1);
+        this.defaultInvocationTimeout = properties.getIcePropertyAsInt("Ice.Default.InvocationTimeout");
         if(this.defaultInvocationTimeout < 1 && this.defaultInvocationTimeout !== -1)
         {
             this.defaultInvocationTimeout = -1;
@@ -122,14 +122,14 @@ class DefaultsAndOverrides
                         properties.getProperty("Ice.Default.InvocationTimeout") + "': defaulting to -1");
         }
 
-        this.defaultPreferSecure = properties.getPropertyAsIntWithDefault("Ice.Default.PreferSecure", 0) > 0;
+        this.defaultPreferSecure = properties.getIcePropertyAsInt("Ice.Default.PreferSecure") > 0;
 
         value = properties.getPropertyWithDefault("Ice.Default.EncodingVersion",
                                                 Ice.encodingVersionToString(Protocol.currentEncoding));
         this.defaultEncoding = Ice.stringToEncodingVersion(value);
         Protocol.checkSupportedEncoding(this.defaultEncoding);
 
-        const slicedFormat = properties.getPropertyAsIntWithDefault("Ice.Default.SlicedFormat", 0) > 0;
+        const slicedFormat = properties.getIcePropertyAsInt("Ice.Default.SlicedFormat") > 0;
         this.defaultFormat = slicedFormat ? FormatType.SlicedFormat : FormatType.CompactFormat;
     }
 }

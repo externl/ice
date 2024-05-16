@@ -61,7 +61,7 @@
 
             let mult = 1;
             if(["ssl", "wss"].includes(
-                communicator.getProperties().getPropertyWithDefault("Ice.Default.Protocol", "tcp")))
+                communicator.getProperties().getIceProperty("Ice.Default.Protocol")))
             {
                 mult = 4;
             }

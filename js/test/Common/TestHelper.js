@@ -76,7 +76,7 @@
             {
                 properties = this._communicator.getProperties();
             }
-            return properties.getPropertyWithDefault("Ice.Default.Protocol", "tcp");
+            return properties.getIceProperty("Ice.Default.Protocol");
         }
 
         getTestPort(...args)

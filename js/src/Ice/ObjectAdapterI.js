@@ -105,7 +105,7 @@ class ObjectAdapterI
         //
         // Warn about unknown object adapter properties.
         //
-        if(unknownProps.length !== 0 && properties.getPropertyAsIntWithDefault("Ice.Warn.UnknownProperties", 1) > 0)
+        if(unknownProps.length !== 0 && properties.getIcePropertyAsInt("Ice.Warn.UnknownProperties") > 0)
         {
             const message = ["found unknown properties for object adapter `" + name + "':"];
             unknownProps.forEach(unknownProp => message.push("\n    " + unknownProp));
