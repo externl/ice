@@ -993,11 +993,11 @@
             p2 = communicator.stringToProxy("test:opaque -e 1.1 -t 4 -v CTEyNy4wLjAuMeouAAAQJwAAAAA=");
             test(communicator.proxyToString(p2) === "test -t -e 1.1:ws -h 127.0.0.1 -p 12010 -t 10000");
 
-            if(communicator.getProperties().getPropertyAsInt("Ice.IPv6") === 0)
+            if(communicator.getProperties().getIceProperty("Ice.IPv6") === 0)
             {
                 const ref = "test:" + this.getTestEndpoint();
 
-                const ssl = communicator.getProperties().getProperty("Ice.Default.Protocol") === "ssl";
+                const ssl = communicator.getProperties().getIceProperty("Ice.Default.Protocol") === "ssl";
                 // TODO: p1 contains 127.0.0.1 - OK to invoke?
                 //   if(!ssl)
                 //   {

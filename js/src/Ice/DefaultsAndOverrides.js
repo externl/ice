@@ -20,22 +20,22 @@ class DefaultsAndOverrides
         this.defaultProtocol = properties.getPropertyWithDefault("Ice.Default.Protocol",
                                                                  Ice.TcpTransceiver !== null ? "tcp" : "ws");
 
-        let value = properties.getProperty("Ice.Default.Host");
+        let value = properties.getIceProperty("Ice.Default.Host");
         this.defaultHost = value.length > 0 ? value : null;
 
-        value = properties.getProperty("Ice.Default.SourceAddress");
+        value = properties.getIceProperty("Ice.Default.SourceAddress");
         this.defaultSourceAddress = value.length > 0 ? value : null;
 
-        value = properties.getProperty("Ice.Override.Timeout");
+        value = properties.getIceProperty("Ice.Override.Timeout");
         if(value.length > 0)
         {
             this.overrideTimeout = true;
-            this.overrideTimeoutValue = properties.getPropertyAsInt("Ice.Override.Timeout");
+            this.overrideTimeoutValue = properties.getIcePropertyAsInt("Ice.Override.Timeout");
             if(this.overrideTimeoutValue < 1 && this.overrideTimeoutValue !== -1)
             {
                 this.overrideTimeoutValue = -1;
                 logger.warning("invalid value for Ice.Override.Timeout `" +
-                                properties.getProperty("Ice.Override.Timeout") + "': defaulting to -1");
+                                properties.getIceProperty("Ice.Override.Timeout") + "': defaulting to -1");
             }
         }
         else
@@ -44,16 +44,16 @@ class DefaultsAndOverrides
             this.overrideTimeoutValue = -1;
         }
 
-        value = properties.getProperty("Ice.Override.ConnectTimeout");
+        value = properties.getIceProperty("Ice.Override.ConnectTimeout");
         if(value.length > 0)
         {
             this.overrideConnectTimeout = true;
-            this.overrideConnectTimeoutValue = properties.getPropertyAsInt("Ice.Override.ConnectTimeout");
+            this.overrideConnectTimeoutValue = properties.getIcePropertyAsInt("Ice.Override.ConnectTimeout");
             if(this.overrideConnectTimeoutValue < 1 && this.overrideConnectTimeoutValue !== -1)
             {
                 this.overrideConnectTimeoutValue = -1;
                 logger.warning("invalid value for Ice.Override.ConnectTimeout `" +
-                                properties.getProperty("Ice.Override.ConnectTimeout") + "': defaulting to -1");
+                                properties.getIceProperty("Ice.Override.ConnectTimeout") + "': defaulting to -1");
             }
         }
         else
@@ -62,16 +62,16 @@ class DefaultsAndOverrides
             this.overrideConnectTimeoutValue = -1;
         }
 
-        value = properties.getProperty("Ice.Override.CloseTimeout");
+        value = properties.getIceProperty("Ice.Override.CloseTimeout");
         if(value.length > 0)
         {
             this.overrideCloseTimeout = true;
-            this.overrideCloseTimeoutValue = properties.getPropertyAsInt("Ice.Override.CloseTimeout");
+            this.overrideCloseTimeoutValue = properties.getIcePropertyAsInt("Ice.Override.CloseTimeout");
             if(this.overrideCloseTimeoutValue < 1 && this.overrideCloseTimeoutValue !== -1)
             {
                 this.overrideCloseTimeoutValue = -1;
                 logger.warning("invalid value for Ice.Override.CloseTimeout `" +
-                                properties.getProperty("Ice.Override.CloseTimeout") + "': defaulting to -1");
+                                properties.getIceProperty("Ice.Override.CloseTimeout") + "': defaulting to -1");
             }
         }
         else
@@ -102,7 +102,7 @@ class DefaultsAndOverrides
         if(this.defaultTimeout < 1 && this.defaultTimeout !== -1)
         {
             this.defaultTimeout = 60000;
-            logger.warning("invalid value for Ice.Default.Timeout `" + properties.getProperty("Ice.Default.Timeout") +
+            logger.warning("invalid value for Ice.Default.Timeout `" + properties.getIceProperty("Ice.Default.Timeout") +
                         "': defaulting to 60000");
         }
 
@@ -111,7 +111,7 @@ class DefaultsAndOverrides
         {
             this.defaultLocatorCacheTimeout = -1;
             logger.warning("invalid value for Ice.Default.LocatorCacheTimeout `" +
-                        properties.getProperty("Ice.Default.LocatorCacheTimeout") + "': defaulting to -1");
+                        properties.getIceProperty("Ice.Default.LocatorCacheTimeout") + "': defaulting to -1");
         }
 
         this.defaultInvocationTimeout = properties.getIcePropertyAsInt("Ice.Default.InvocationTimeout");
@@ -119,7 +119,7 @@ class DefaultsAndOverrides
         {
             this.defaultInvocationTimeout = -1;
             logger.warning("invalid value for Ice.Default.InvocationTimeout `" +
-                        properties.getProperty("Ice.Default.InvocationTimeout") + "': defaulting to -1");
+                        properties.getIceProperty("Ice.Default.InvocationTimeout") + "': defaulting to -1");
         }
 
         this.defaultPreferSecure = properties.getIcePropertyAsInt("Ice.Default.PreferSecure") > 0;

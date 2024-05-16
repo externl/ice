@@ -359,7 +359,7 @@ class Instance
             }
 
             this._implicitContext =
-                ImplicitContextI.create(this._initData.properties.getProperty("Ice.ImplicitContext"));
+                ImplicitContextI.create(this._initData.properties.getIceProperty("Ice.ImplicitContext"));
 
             this._routerManager = new RouterManager();
 
@@ -525,7 +525,7 @@ class Instance
                     this._endpointFactoryManager.destroy();
                 }
 
-                if(this._initData.properties.getPropertyAsInt("Ice.Warn.UnusedProperties") > 0)
+                if(this._initData.properties.getIcePropertyAsInt("Ice.Warn.UnusedProperties") > 0)
                 {
                     const unusedProperties = this._initData.properties.getUnusedProperties();
                     if(unusedProperties.length > 0)

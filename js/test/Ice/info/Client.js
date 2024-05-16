@@ -41,7 +41,7 @@
         {
             const out = this.getWriter();
             const communicator = this.communicator();
-            const defaultHost = communicator.getProperties().getPropertyWithDefault("Ice.Default.Host");
+            const defaultHost = communicator.getProperties().getIceProperty("Ice.Default.Host");
 
             out.write("testing proxy endpoint information... ");
             const ref =

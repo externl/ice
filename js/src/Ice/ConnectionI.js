@@ -90,8 +90,8 @@ class ConnectionI
 
         this._hasMoreData = {value: false};
 
-        this._warn = initData.properties.getPropertyAsInt("Ice.Warn.Connections") > 0;
-        this._warnUdp = instance.initializationData().properties.getPropertyAsInt("Ice.Warn.Datagrams") > 0;
+        this._warn = initData.properties.getIcePropertyAsInt("Ice.Warn.Connections") > 0;
+        this._warnUdp = instance.initializationData().properties.getIcePropertyAsInt("Ice.Warn.Datagrams") > 0;
         this._acmLastActivity = this._monitor !== null && this._monitor.getACM().timeout > 0 ? Date.now() : -1;
         this._nextRequestId = 1;
         this._messageSizeMax = adapter ? adapter.messageSizeMax() : instance.messageSizeMax();
