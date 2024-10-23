@@ -129,6 +129,8 @@ public class AllTests {
         com.zeroc.Ice.Communicator communicator = helper.communicator();
         PrintWriter out = helper.getWriter();
 
+        communicator.getProperties().setProperty("Ice.Connection.Client.EnableIdleCheck", "0");
+
         String sref = "background:" + helper.getTestEndpoint(0);
         com.zeroc.Ice.ObjectPrx obj = communicator.stringToProxy(sref);
         test(obj != null);
