@@ -582,7 +582,7 @@ IceRuby::convertException(std::exception_ptr eptr)
         // First handle exceptions with extra fields we want to provide to Ruby users.
         catch (const Ice::AlreadyRegisteredException& ex)
         {
-            volatile std::array args{
+            volatile std::array<VALUE, 3> args{
                 IceRuby::createString(ex.kindOfObject()),
                 IceRuby::createString(ex.id()),
                 IceRuby::createString(ex.what())};
@@ -591,7 +591,7 @@ IceRuby::convertException(std::exception_ptr eptr)
         }
         catch (const Ice::NotRegisteredException& ex)
         {
-            volatile std::array args{
+            std::array args{
                 IceRuby::createString(ex.kindOfObject()),
                 IceRuby::createString(ex.id()),
                 IceRuby::createString(ex.what())};
@@ -601,7 +601,7 @@ IceRuby::convertException(std::exception_ptr eptr)
         catch (const Ice::RequestFailedException& ex)
         {
             volatile VALUE replyStatus = callRuby(rb_int2inum, static_cast<int>(ex.replyStatus()));
-            volatile std::array args{
+            std::array args{
                 replyStatus,
                 IceRuby::createIdentity(ex.id()),
                 IceRuby::createString(ex.facet()),
@@ -613,23 +613,23 @@ IceRuby::convertException(std::exception_ptr eptr)
         catch (const Ice::DispatchException& ex)
         {
             volatile VALUE replyStatus = callRuby(rb_int2inum, static_cast<int>(ex.replyStatus()));
-            volatile std::array args{replyStatus, IceRuby::createString(ex.what())};
+            std::array args{replyStatus, IceRuby::createString(ex.what())};
             return createRubyException(ex.ice_id(), std::move(args));
         }
         // Then all other exceptions.
         catch (const Ice::LocalException& ex)
         {
-            volatile std::array args{IceRuby::createString(ex.what())};
+            std::array args{IceRuby::createString(ex.what())};
             return createRubyException(ex.ice_id(), std::move(args), true);
         }
         catch (const std::exception& ex)
         {
-            volatile std::array args{IceRuby::createString(ex.what())};
+            std::array args{IceRuby::createString(ex.what())};
             return createRubyException(localExceptionTypeId, std::move(args));
         }
         catch (...)
         {
-            volatile std::array args{IceRuby::createString("unknown C++ exception")};
+            std::array args{IceRuby::createString("unknown C++ exception")};
             return createRubyException(localExceptionTypeId, std::move(args));
         }
     }
