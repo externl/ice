@@ -827,10 +827,6 @@ Gen::TypesVisitor::visitDictionary(const DictionaryPtr& p)
     out << sb;
     out << nl << "let sz = try Swift.Int(istr.readSize())";
     out << nl;
-    if (p->valueType()->isClassType())
-    {
-        out << "nonisolated(unsafe) ";
-    }
     out << "var v = " << name << "()";
     if (p->valueType()->isClassType())
     {
