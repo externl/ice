@@ -41,3 +41,17 @@ jobs:
           path: ./matlab/config/result.json
           if-no-files-found: ignore
         if: always()
+
+      - name: Download m2docgen toolbox
+        working-directory: ./matlab/config
+        run: |
+          # wget -O m2docgen_V2.2.mltbx https://raw.githubusercontent.com/nilsBoeAc/m2docgen/refs/heads/master/projectData/m2docgen_V2.2.mltbx
+          #$MATLAB_COMMAND -batch "matlab.addons.install(' m2docgen_V2.2.mltbx')"
+
+           $MATLAB_COMMAND -batch "matlab.addons.install('toolboxes/MyToolbox.mltbx')"
+
+      # - name: Generate documentation
+      #   run: |
+      #     $MATLAB_COMMAND doc
+      #   working-directory: ./matlab/config
+      #   shell: bash
