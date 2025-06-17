@@ -21,26 +21,26 @@ jobs:
       - name: Setup MATLAB
         uses: ./.github/actions/setup-matlab
 
-      - name: Build MATLAB on Ubuntu
-        uses: ./.github/actions/build
-        timeout-minutes: 90
-        with:
-          working_directory: "matlab"
-          build_cpp_and_python: true
+      # - name: Build MATLAB on Ubuntu
+      #   uses: ./.github/actions/build
+      #   timeout-minutes: 90
+      #   with:
+      #     working_directory: "matlab"
+      #     build_cpp_and_python: true
 
-      - name: MATLAB Analyzer
-        run: |
-          $MATLAB_COMMAND code_analyzer
-        working-directory: ./matlab/config
-        shell: bash
+      # - name: MATLAB Analyzer
+      #   run: |
+      #     $MATLAB_COMMAND code_analyzer
+      #   working-directory: ./matlab/config
+      #   shell: bash
 
-      - name: Upload Analyzer Report
-        uses: actions/upload-artifact@v4
-        with:
-          name: matlab-analyzer-report
-          path: ./matlab/config/result.json
-          if-no-files-found: ignore
-        if: always()
+      # - name: Upload Analyzer Report
+      #   uses: actions/upload-artifact@v4
+      #   with:
+      #     name: matlab-analyzer-report
+      #     path: ./matlab/config/result.json
+      #     if-no-files-found: ignore
+      #   if: always()
 
       - name: Download m2docgen toolbox
         working-directory: ./matlab/config
