@@ -50,6 +50,6 @@ jobs:
 
       - name: Generate documentation
         run: |
-          $MATLAB_COMMAND generate_documentation
+          $MATLAB_COMMAND run("generate_documentation.m")
         working-directory: ./matlab/toolbox
         shell: bash
