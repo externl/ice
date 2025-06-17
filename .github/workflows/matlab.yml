@@ -50,6 +50,6 @@ jobs:
 
       - name: Generate documentation
         run: |
-          $MATLAB_COMMAND "run('generate_documentation.m')"
+          $MATLAB_COMMAND "run('generateApiReference')"
         working-directory: ./matlab/toolbox
         shell: bash
