@@ -13,11 +13,11 @@ opts = struct(  'toolboxName',      "Ice",
                 'mFolder',          src, 
                 'outputFolder',     oF, 
                 'excludeFolder',    "toolbox",
-                'excludeFile',      string.empty,
-                'htmlMetaFolder',   "ressources",  % check spelling!
+                'excludeFile',      [""],
+                'htmlMetaFolder',   "resources", 
                 'htmlTemplate',     "m2doc-standard",
                 'startPage',        "Welcome_to_m2docgen.html",
-                'toc',              string.empty, 
+                'toc',              [""],
                 'verbose',          true);
 
 % make sure to have added m2docgen to the matlab path
