@@ -4,7 +4,7 @@
 
 % cd(fileparts(which(mfilename)));
 cPath = fileparts(which(mfilename));
-mF = fileparts(cPath);
+mF = fileparts(cPath, 'src');
 mF = fullfile(mF);
 oF = fullfile(mF, 'm2docgen_documentation');
 
