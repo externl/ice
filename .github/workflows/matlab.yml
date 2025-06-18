@@ -15,8 +15,8 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
 
-      - name: Setup C++
-        uses: ./.github/actions/setup-cpp
+      # - name: Setup C++
+      #   uses: ./.github/actions/setup-cpp
 
       - name: Setup MATLAB
         uses: ./.github/actions/setup-matlab
