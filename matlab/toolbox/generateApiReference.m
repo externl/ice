@@ -5,7 +5,7 @@
 % cd(fileparts(which(mfilename)));
 cPath = fileparts(which(mfilename));
 mF = fileparts(cPath);
-mF = fullfile(mF, 'src');
+mF = fullfile(mF);
 oF = fullfile(mF, 'm2docgen_documentation');
 
 % opts = struct(  'toolboxName',      "Ice", ...
