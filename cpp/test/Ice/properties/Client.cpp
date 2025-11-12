@@ -40,6 +40,21 @@ Client::run(int, char**)
     }
 
     {
+        cout << "testing fallback Ice.ProgramName... " << flush;
+        Ice::InitializationData initData;
+        Ice::CommunicatorPtr communicator = Ice::initialize(std::move(initData));
+        Ice::PropertiesPtr properties = communicator->getProperties();
+        string programName = properties->getIceProperty("Ice.ProgramName");
+#ifdef _WIN32
+        test(programName == "client.exe");
+#else
+        test(programName == "client");
+#endif
+        communicator->destroy();
+        cout << programName << " ok" << endl;
+    }
+
+    {
         cout << "testing using Ice.Config with multiple config files... " << flush;
         Ice::PropertiesPtr properties;
         Ice::StringSeq args;

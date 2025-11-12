@@ -39,9 +39,9 @@
 #include "DisableWarnings.h"
 
 #include <cstdio>
+#include <iostream>
 #include <list>
 #include <mutex>
-
 #if defined(_WIN32)
 #    include "SSL/SchannelEngine.h"
 #elif defined(__APPLE__)
@@ -52,6 +52,7 @@
 
 #ifdef __APPLE__
 #    include "OSLogLoggerI.h"
+#    include <libproc.h> // For proc_pidpath
 #endif
 
 #ifndef _WIN32
@@ -101,6 +102,45 @@ namespace
         {
             return instanceList->size();
         }
+    }
+
+    string getProgramName()
+    {
+        string programName;
+#if defined(__APPLE__)
+        vector<char> buffer(PATH_MAX);
+        int len = proc_pidpath(getpid(), buffer.data(), static_cast<uint32_t>(buffer.size()));
+        if (len > 0)
+        {
+            programName = string{buffer.data(), static_cast<size_t>(len)};
+        }
+#elif defined(__linux__)
+        pid_t pid = getpid();
+        // Read the command line from proc
+        string procExePath{"/proc/self/exe"};
+        vector<char> buffer(PATH_MAX);
+        ssize_t len = readlink(procExePath.c_str(), buffer.data(), buffer.size());
+        if (len > 0)
+        {
+            programName = string{buffer.data(), static_cast<size_t>(len)};
+        }
+
+#elif defined(_WIN32)
+        DWORD pid = GetCurrentProcessId();
+        vector<char> buffer{MAX_PATH};
+        DWORD len = GetModuleFileNameA(NULL, buffer.data(), static_cast<DWORD>(buffer.size()));
+        if (len > 0 && len < buffer.size())
+        {
+            programName = string{buffer.data(), len};
+        }
+#endif
+        // Extract base name if programName contains a path
+        size_t lastSlash = programName.find_last_of("/\\");
+        if (lastSlash != std::string::npos)
+        {
+            programName = programName.substr(lastSlash + 1);
+        }
+        return programName;
     }
 
     void checkPrintStackTraces(const InitializationData& initData) noexcept
@@ -928,21 +968,23 @@ IceInternal::Instance::initialize(const Ice::CommunicatorPtr& communicator)
 {
     try
     {
-        string programName;
-        if (_initData.properties)
+        if (!_initData.properties)
         {
-            programName = _initData.properties->getIceProperty("Ice.ProgramName");
+            // Plain empty properties, in particular, no ICE_CONFIG properties.
+            _initData.properties = make_shared<Ice::Properties>();
+        }
+
+        string programName = _initData.properties->getIceProperty("Ice.ProgramName");
+
+        if (programName.empty())
+        {
+            programName = getProgramName();
+            _initData.properties->setProperty("Ice.ProgramName", programName);
         }
 
         {
             lock_guard lock(staticMutex);
             instanceList->push_back(this);
-
-            if (!_initData.properties)
-            {
-                // Plain empty properties, in particular, no ICE_CONFIG properties.
-                _initData.properties = make_shared<Ice::Properties>();
-            }
 
             if (!oneOffDone)
             {
