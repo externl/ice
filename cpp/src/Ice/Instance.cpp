@@ -58,7 +58,6 @@
 #endif
 
 #ifndef _WIN32
-
 #    if !defined(__APPLE__) || TARGET_OS_IPHONE == 0
 #        include "SysLoggerI.h"
 #    endif
