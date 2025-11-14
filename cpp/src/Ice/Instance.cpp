@@ -115,7 +115,6 @@ namespace
             programName = string{buffer.data(), static_cast<size_t>(len)};
         }
 #elif defined(__linux__)
-        pid_t pid = getpid();
         // Read the command line from proc
         string procExePath{"/proc/self/exe"};
         vector<char> buffer(PATH_MAX);
@@ -127,7 +126,7 @@ namespace
 
 #elif defined(_WIN32)
         DWORD pid = GetCurrentProcessId();
-        vector<char> buffer{MAX_PATH};
+        vector<char> buffer(MAX_PATH);
         DWORD len = GetModuleFileNameA(NULL, buffer.data(), static_cast<DWORD>(buffer.size()));
         if (len > 0 && len < buffer.size())
         {
