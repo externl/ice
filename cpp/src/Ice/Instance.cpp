@@ -125,7 +125,6 @@ namespace
         }
 
 #elif defined(_WIN32)
-        DWORD pid = GetCurrentProcessId();
         vector<char> buffer(MAX_PATH);
         DWORD len = GetModuleFileNameA(NULL, buffer.data(), static_cast<DWORD>(buffer.size()));
         if (len > 0 && len < buffer.size())
