@@ -1,0 +1,191 @@
+# Fork-only SPIKE (Stage B): can two Android emulators do RFCOMM over Netsim/Rootcanal headless on a
+# GH runner -- including bonding, which IceBT's secure RFCOMM requires?
+#
+# Stage A proved the substrate (two emulators + Netsim + live BT adapters). Stage B builds a tiny
+# RFCOMM echo app (spike/btecho) and runs it between the two emulators:
+#   1. INSECURE RFCOMM (no bonding) -- proves the emulated BT data path works at all.
+#   2. SECURE RFCOMM + createBond()  -- proves what IceBT actually needs.
+name: BT emulator spike (fork)
+
+on:
+  push:
+    branches: ["bt-emulator-spike"]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  spike:
+    name: Two-emulator RFCOMM echo
+    runs-on: ubuntu-24.04
+    timeout-minutes: 50
+    env:
+      IMG: "system-images;android-36;google_apis;x86_64"
+      ANDROID_AVD_HOME: "/home/runner/.android/avd"
+      UUID: "8ce255c0-200a-11e0-ac64-0800200c9a66"
+    steps:
+      - name: Checkout
+        uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
+
+      - name: Enable KVM
+        run: |
+          echo 'KERNEL=="kvm", GROUP="kvm", MODE="0666", OPTIONS+="static_node=kvm"' | sudo tee /etc/udev/rules.d/99-kvm4all.rules
+          sudo udevadm control --reload-rules
+          sudo udevadm trigger --name-match=kvm
+          ls -l /dev/kvm || echo "NO /dev/kvm"
+
+      - name: Free disk space
+        run: |
+          sudo rm -rf /usr/local/go* /opt/hostedtoolcache/go /usr/local/.ghcup /usr/share/dotnet
+          df -h /
+
+      - name: Install Android SDK packages
+        run: |
+          SDKMGR="$ANDROID_SDK_ROOT/cmdline-tools/latest/bin/sdkmanager"
+          yes | "$SDKMGR" --licenses >/dev/null 2>&1 || true
+          "$SDKMGR" "platform-tools" "emulator" "platforms;android-36" "build-tools;36.0.0" "$IMG"
+          echo "$ANDROID_SDK_ROOT/cmdline-tools/latest/bin" >> "$GITHUB_PATH"
+          echo "$ANDROID_SDK_ROOT/platform-tools" >> "$GITHUB_PATH"
+          echo "$ANDROID_SDK_ROOT/emulator" >> "$GITHUB_PATH"
+
+      - name: Build btecho APK
+        run: |
+          # Reuse the repo's Gradle wrapper (Gradle 9.2.1, compatible with AGP 8.13.2).
+          cp java/gradlew spike/btecho/gradlew
+          cp -r java/gradle spike/btecho/gradle
+          cd spike/btecho
+          ./gradlew --no-daemon assembleDebug
+          APK=$(find "$PWD/build/outputs/apk" -name '*.apk' | head -1)
+          echo "built APK: $APK"
+          echo "APK=$APK" >> "$GITHUB_ENV"
+
+      - name: Create two AVDs
+        run: |
+          mkdir -p "$ANDROID_AVD_HOME"
+          echo no | avdmanager -v create avd -k "$IMG" -d "Nexus 6" -n bt_a
+          echo no | avdmanager -v create avd -k "$IMG" -d "Nexus 6" -n bt_b
+          for n in bt_a bt_b; do emulator -list-avds | grep -qx "$n" || { echo "AVD $n missing"; exit 1; }; done
+
+      - name: Boot both emulators with Netsim Bluetooth
+        run: |
+          # -writable-system lets us remount /system to install a privileged app (for BLUETOOTH_PRIVILEGED).
+          FLAGS="-no-audio -partition-size 1024 -no-snapshot -writable-system -gpu swiftshader_indirect -accel on -no-boot-anim -no-window -packet-streamer-endpoint default"
+          nohup emulator -avd bt_a -port 5554 $FLAGS > emu_a.log 2>&1 &
+          nohup emulator -avd bt_b -port 5556 $FLAGS > emu_b.log 2>&1 &
+          echo "launched"
+
+      - name: Wait for boot
+        run: |
+          for p in 5554 5556; do
+            timeout 120 adb -s emulator-$p wait-for-device || echo "emulator-$p: no device"
+            if timeout 300 bash -c "until [ \"\$(adb -s emulator-$p shell getprop sys.boot_completed 2>/dev/null | tr -d '\r')\" = 1 ]; do sleep 3; done"; then
+              echo "emulator-$p BOOTED"
+            else
+              echo "emulator-$p BOOT TIMEOUT"
+            fi
+          done
+          adb devices
+
+      - name: Install btecho as a privileged system app (grants BLUETOOTH_PRIVILEGED for auto-pairing)
+        run: |
+          set +e
+          # privapp-permissions allowlist so the privileged app is granted BLUETOOTH_PRIVILEGED.
+          cat > /tmp/privapp-btecho.xml <<'XML'
+          <permissions>
+              <privapp-permissions package="com.zeroc.btecho">
+                  <permission name="android.permission.BLUETOOTH_PRIVILEGED"/>
+              </privapp-permissions>
+          </permissions>
+          XML
+          wait_boot() {
+            timeout 150 adb -s emulator-$1 wait-for-device || echo "emulator-$1: no device"
+            timeout 300 bash -c "until [ \"\$(adb -s emulator-$1 shell getprop sys.boot_completed 2>/dev/null | tr -d '\r')\" = 1 ]; do sleep 3; done" \
+              && echo "emulator-$1 up" || echo "emulator-$1 boot TIMEOUT"
+          }
+          # Pass 1: 'adb remount' disables verity and sets up overlayfs, but needs a reboot to take effect.
+          for p in 5554 5556; do
+            echo "== emulator-$p: enable writable /system =="
+            adb -s emulator-$p root; sleep 2
+            adb -s emulator-$p remount 2>&1 | tail -2
+            adb -s emulator-$p reboot
+          done
+          for p in 5554 5556; do wait_boot $p; done
+          # Pass 2: /system is now writable -- push the app + allowlist, then reboot to register the priv-app.
+          for p in 5554 5556; do
+            echo "== emulator-$p: install privileged app =="
+            adb -s emulator-$p root; sleep 2
+            adb -s emulator-$p remount 2>&1 | tail -1
+            adb -s emulator-$p shell mkdir -p /system/priv-app/btecho
+            adb -s emulator-$p push "$APK" /system/priv-app/btecho/btecho.apk
+            adb -s emulator-$p push /tmp/privapp-btecho.xml /system/etc/permissions/privapp-permissions-btecho.xml
+            adb -s emulator-$p reboot
+          done
+          for p in 5554 5556; do wait_boot $p; done
+          echo "-- diagnose privileged-permission grant on emulator-5554 --"
+          echo "control_privapp_permissions:"; adb -s emulator-5554 shell getprop ro.control_privapp_permissions
+          echo "allowlist file:"; adb -s emulator-5554 shell 'ls -l /system/etc/permissions/privapp-permissions-btecho.xml; echo ---; cat /system/etc/permissions/privapp-permissions-btecho.xml'
+          echo "pkg flags/perms:"; adb -s emulator-5554 shell dumpsys package com.zeroc.btecho 2>/dev/null | grep -iE "codePath|flags=|pkgFlags|privateFlags|BLUETOOTH" | head -20
+          echo "requested perms block:"; adb -s emulator-5554 shell dumpsys package com.zeroc.btecho 2>/dev/null | sed -n '/requested permissions/,/gids=/p' | head -30
+          echo "privapp logcat:"; adb -s emulator-5554 shell logcat -d 2>/dev/null | grep -iE "privapp|btecho.*permiss|not allowlist|allowlist.*btecho|BLUETOOTH_PRIVILEGED" | head -15
+          echo "pm grant attempt (informative):"; adb -s emulator-5554 shell pm grant com.zeroc.btecho android.permission.BLUETOOTH_PRIVILEGED 2>&1 | head -3
+
+      - name: RFCOMM echo tests (insecure, then secure+bond)
+        continue-on-error: true
+        run: |
+          set +e
+          for p in 5554 5556; do adb -s emulator-$p root >/dev/null 2>&1 || true; done
+          sleep 3
+          for p in 5554 5556; do
+            echo "== setup emulator-$p =="
+            adb -s emulator-$p shell cmd bluetooth_manager enable 2>&1
+            adb -s emulator-$p shell cmd bluetooth_manager wait-for-state:STATE_ON 2>&1
+            # App is already installed as a system app; just grant the runtime BT perms.
+            adb -s emulator-$p shell pm grant com.zeroc.btecho android.permission.BLUETOOTH_CONNECT 2>&1
+            adb -s emulator-$p shell pm grant com.zeroc.btecho android.permission.BLUETOOTH_SCAN 2>&1
+          done
+          A=$(adb -s emulator-5554 shell settings get secure bluetooth_address 2>/dev/null | tr -d '\r')
+          B=$(adb -s emulator-5556 shell settings get secure bluetooth_address 2>/dev/null | tr -d '\r')
+          echo "emulator-5554 addr=$A ; emulator-5556 (server) addr=$B"
+
+          run_test() {
+            secure=$1; bond=$2; label=$3
+            echo ""
+            echo "==================== TEST: $label ===================="
+            for p in 5554 5556; do
+              adb -s emulator-$p logcat -c 2>/dev/null
+              adb -s emulator-$p shell am force-stop com.zeroc.btecho 2>/dev/null
+            done
+            # server on B (5556)
+            adb -s emulator-5556 shell am start -n com.zeroc.btecho/.MainActivity \
+              --es mode server --es uuid "$UUID" --ez secure "$secure" >/dev/null 2>&1
+            sleep 6
+            # client on A (5554) -> B
+            adb -s emulator-5554 shell am start -n com.zeroc.btecho/.MainActivity \
+              --es mode client --es peer "$B" --es uuid "$UUID" --ez secure "$secure" --ez bond "$bond" >/dev/null 2>&1
+            # wait up to ~75s for the client to report a RESULT
+            for i in $(seq 1 25); do
+              adb -s emulator-5554 logcat -d -s BTECHO 2>/dev/null | grep -q "RESULT client" && break
+              sleep 3
+            done
+            echo "--- server (5556) ---"; adb -s emulator-5556 logcat -d -s BTECHO 2>/dev/null | sed -E 's/.*BTECHO[^:]*: //' | tail -15
+            echo "--- client (5554) ---"; adb -s emulator-5554 logcat -d -s BTECHO 2>/dev/null | sed -E 's/.*BTECHO[^:]*: //' | tail -20
+          }
+
+          run_test false false "INSECURE RFCOMM (no bonding -- data-path proof)"
+          run_test true  true  "SECURE RFCOMM + bonding (what IceBT needs)"
+
+      - name: Emulator log tails
+        if: always()
+        run: |
+          echo "=== emu_a.log ==="; tail -30 emu_a.log 2>/dev/null || true
+          echo "=== emu_b.log ==="; tail -30 emu_b.log 2>/dev/null || true
+
+      - name: Verdict
+        if: always()
+        run: |
+          echo "Look for 'RESULT client OK' in each test above:"
+          echo "  * INSECURE OK  -> the emulated BT RFCOMM data path works headless on GH runners."
+          echo "  * SECURE OK    -> bonding + secure RFCOMM work too, so Android IceBT-over-BT is viable in CI."
+          echo "  * SECURE FAIL but INSECURE OK -> data path works but headless bonding is the blocker"
+          echo "    (IceBT would need an insecure-RFCOMM option, or pre-provisioned pairing)."

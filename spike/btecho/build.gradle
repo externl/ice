@@ -1,0 +1,27 @@
+plugins {
+    id 'com.android.application' version '8.13.2'
+}
+
+android {
+    namespace = 'com.zeroc.btecho'
+    compileSdk = 36
+
+    defaultConfig {
+        applicationId = 'com.zeroc.btecho'
+        minSdk = 34
+        targetSdk = 36
+        versionCode = 1
+        versionName = '1.0'
+    }
+
+    compileOptions {
+        sourceCompatibility = JavaVersion.VERSION_17
+        targetCompatibility = JavaVersion.VERSION_17
+    }
+
+    buildTypes {
+        debug {
+            minifyEnabled = false
+        }
+    }
+}
