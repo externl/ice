@@ -1,0 +1,195 @@
+# Fork-only integration test: run a REAL Ice test between two Android emulators over emulated
+# Bluetooth, using the actual test harness (Controller.py server on emu B + allTests.py client on
+# emu A), on the Stage-D harness changes (device-scoped adb + per-device forward port).
+#
+# Flow: build slice2java + Ice/IceBT/test Java libs + the real controller APK + a tiny pre-bond
+# helper (btecho); boot two emulators on Netsim BT; pre-bond them (priv-app btecho); then run the
+# two-process harness over --protocol=bt.
+name: BT Android harness (fork)
+
+on:
+  push:
+    branches: ["bt-android-harness"]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  android-bt:
+    name: Android<->Android IceBT over emulated Bluetooth
+    runs-on: ubuntu-24.04
+    timeout-minutes: 90
+    env:
+      IMG: "system-images;android-36;google_apis;x86_64"
+      ANDROID_AVD_HOME: "/home/runner/.android/avd"
+      UUID: "8ce255c0-200a-11e0-ac64-0800200c9a66"
+      TEST: "Ice/operations"
+    steps:
+      - name: Checkout
+        uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
+      - name: Setup C++
+        uses: ./.github/actions/setup-cpp
+      - name: Setup Java
+        uses: ./.github/actions/setup-java
+      - name: Setup Python
+        uses: ./.github/actions/setup-python
+
+      - name: Enable KVM
+        run: |
+          echo 'KERNEL=="kvm", GROUP="kvm", MODE="0666", OPTIONS+="static_node=kvm"' | sudo tee /etc/udev/rules.d/99-kvm4all.rules
+          sudo udevadm control --reload-rules
+          sudo udevadm trigger --name-match=kvm
+      - name: Free disk space
+        run: |
+          sudo rm -rf /usr/local/go* /opt/hostedtoolcache/go /usr/local/.ghcup /usr/share/dotnet
+          df -h /
+      - name: Ensure debug keystore
+        run: |
+          mkdir -p ~/.android
+          [ -f ~/.android/debug.keystore ] || keytool -genkeypair -v -keystore ~/.android/debug.keystore \
+            -storepass android -keypass android -alias androiddebugkey -keyalg RSA -keysize 2048 \
+            -validity 10000 -dname "CN=Android Debug,O=Android,C=US"
+
+      - name: Build Ice C++ (slice compilers + runtime)
+        run: make -C cpp srcs
+
+      - name: Build Python Ice (the harness itself is a Python Ice program)
+        run: make -C python
+
+      - name: Build Ice/IceBT/test Java libs
+        run: |
+          make -C java srcs
+          make -C java tests
+          ls -l java/lib/ice-*.jar java/lib/icebt-*.jar java/lib/test.jar
+
+      - name: Install Android SDK packages
+        run: |
+          SDKMGR="$ANDROID_SDK_ROOT/cmdline-tools/latest/bin/sdkmanager"
+          yes | "$SDKMGR" --licenses >/dev/null 2>&1 || true
+          "$SDKMGR" "platform-tools" "emulator" "platforms;android-36" "build-tools;36.0.0" "$IMG"
+          echo "$ANDROID_SDK_ROOT/cmdline-tools/latest/bin" >> "$GITHUB_PATH"
+          echo "$ANDROID_SDK_ROOT/platform-tools" >> "$GITHUB_PATH"
+          echo "$ANDROID_SDK_ROOT/emulator" >> "$GITHUB_PATH"
+
+      - name: Build the controller APK
+        run: |
+          cd java/test/android/controller
+          ./gradlew --no-daemon assembleDebug
+          find "$PWD/build/outputs/apk" -name '*.apk'
+
+      - name: Build btecho APK (pre-bond helper)
+        run: |
+          cp java/gradlew spike/btecho/gradlew
+          cp -r java/gradle spike/btecho/gradle
+          keytool -genkeypair -v -keystore spike/btecho/debug.keystore -storepass android -keypass android \
+            -alias androiddebugkey -keyalg RSA -keysize 2048 -validity 10000 -dname "CN=Android Debug,O=Android,C=US"
+          cd spike/btecho
+          ./gradlew --no-daemon assembleDebug
+          echo "BTECHO_APK=$(find "$PWD/build/outputs/apk" -name '*.apk' | head -1)" >> "$GITHUB_ENV"
+
+      - name: Install Python test deps
+        run: python3 -m pip install passlib cryptography numpy
+
+      - name: Create two AVDs
+        run: |
+          mkdir -p "$ANDROID_AVD_HOME"
+          echo no | avdmanager -v create avd -k "$IMG" -d "Nexus 6" -n bt_a
+          echo no | avdmanager -v create avd -k "$IMG" -d "Nexus 6" -n bt_b
+          for n in bt_a bt_b; do emulator -list-avds | grep -qx "$n" || { echo "AVD $n missing"; exit 1; }; done
+
+      - name: Boot both emulators with Netsim Bluetooth
+        run: |
+          FLAGS="-no-audio -partition-size 2048 -no-snapshot -writable-system -gpu swiftshader_indirect -accel on -no-boot-anim -no-window -packet-streamer-endpoint default"
+          nohup emulator -avd bt_a -port 5554 $FLAGS > emu_a.log 2>&1 &
+          nohup emulator -avd bt_b -port 5556 $FLAGS > emu_b.log 2>&1 &
+          echo launched
+      - name: Wait for boot
+        run: |
+          for p in 5554 5556; do
+            timeout 120 adb -s emulator-$p wait-for-device || echo "emulator-$p: no device"
+            timeout 300 bash -c "until [ \"\$(adb -s emulator-$p shell getprop sys.boot_completed 2>/dev/null | tr -d '\r')\" = 1 ]; do sleep 3; done" \
+              && echo "emulator-$p BOOTED" || echo "emulator-$p BOOT TIMEOUT"
+          done
+          adb devices
+
+      - name: Pre-bond the two emulators (privileged btecho helper)
+        run: |
+          set +e
+          cat > /tmp/privapp-btecho.xml <<'XML'
+          <permissions>
+              <privapp-permissions package="com.zeroc.btecho">
+                  <permission name="android.permission.BLUETOOTH_PRIVILEGED"/>
+              </privapp-permissions>
+          </permissions>
+          XML
+          wb() { timeout 150 adb -s emulator-$1 wait-for-device || true
+            timeout 300 bash -c "until [ \"\$(adb -s emulator-$1 shell getprop sys.boot_completed 2>/dev/null | tr -d '\r')\" = 1 ]; do sleep 3; done" && echo "emulator-$1 up" || echo "emulator-$1 TIMEOUT"; }
+          for p in 5554 5556; do adb -s emulator-$p root; sleep 2; adb -s emulator-$p remount 2>&1 | tail -1; adb -s emulator-$p reboot; done
+          for p in 5554 5556; do wb $p; done
+          for p in 5554 5556; do
+            adb -s emulator-$p root; sleep 2; adb -s emulator-$p remount 2>&1 | tail -1
+            adb -s emulator-$p shell mkdir -p /system/priv-app/btecho
+            adb -s emulator-$p push "$BTECHO_APK" /system/priv-app/btecho/btecho.apk
+            adb -s emulator-$p push /tmp/privapp-btecho.xml /system/etc/permissions/privapp-permissions-btecho.xml
+            adb -s emulator-$p reboot
+          done
+          for p in 5554 5556; do wb $p; done
+          for p in 5554 5556; do
+            adb -s emulator-$p root >/dev/null 2>&1; adb -s emulator-$p shell cmd bluetooth_manager enable 2>&1
+            adb -s emulator-$p shell cmd bluetooth_manager wait-for-state:STATE_ON 2>&1
+            adb -s emulator-$p shell pm grant com.zeroc.btecho android.permission.BLUETOOTH_CONNECT 2>&1
+            adb -s emulator-$p shell pm grant com.zeroc.btecho android.permission.BLUETOOTH_SCAN 2>&1
+          done
+          B=$(adb -s emulator-5556 shell settings get secure bluetooth_address 2>/dev/null | tr -d '\r')
+          echo "server (emulator-5556) bt addr = $B"; echo "BT_ADDR=$B" >> "$GITHUB_ENV"
+          # Bond emulator-5554 (client) to emulator-5556 (server) via btecho.
+          adb -s emulator-5556 shell am start -n com.zeroc.btecho/.MainActivity --es mode server --es uuid "$UUID" --ez secure true >/dev/null 2>&1
+          sleep 6
+          adb -s emulator-5554 shell am start -n com.zeroc.btecho/.MainActivity --es mode client --es peer "$B" --es uuid "$UUID" --ez secure true --ez bond true >/dev/null 2>&1
+          for i in $(seq 1 25); do adb -s emulator-5554 logcat -d -s BTECHO 2>/dev/null | grep -q "RESULT client" && break; sleep 3; done
+          echo "-- bond result --"; adb -s emulator-5554 logcat -d -s BTECHO 2>/dev/null | sed -E 's/.*BTECHO[^:]*: //' | grep -iE "bond state|RESULT" | tail -5
+          echo "-- bonded devices on client (5554) --"; adb -s emulator-5554 shell dumpsys bluetooth_manager 2>/dev/null | grep -iE "Bonded devices|$B" | head -3
+
+      - name: Run the harness over Bluetooth (Controller.py server + allTests.py client)
+        continue-on-error: true
+        run: |
+          set +e
+          cd java
+          echo "== starting server controller on emulator-5556 =="
+          nohup python3 ../scripts/Controller.py --id=server --android --device=emulator-5556 --host-bt="$BT_ADDR" \
+            > "$GITHUB_WORKSPACE/controller.log" 2>&1 &
+          echo "controller pid $!"
+          echo "-- waiting for the server controller to install + start its app --"
+          for i in $(seq 1 40); do grep -qiE "ProcessController|controller ready|Adapter ready|Listening" "$GITHUB_WORKSPACE/controller.log" && break; sleep 3; done
+          tail -20 "$GITHUB_WORKSPACE/controller.log" || true
+          echo "== running client test suite on emulator-5554 over bt =="
+          python3 allTests.py --server=server --protocol=bt --cross=java --android --device=emulator-5554 \
+            --host-bt="$BT_ADDR" --debug --workers=1 "$TEST" 2>&1 | tail -80
+          echo "== controller.log tail =="; tail -40 "$GITHUB_WORKSPACE/controller.log" || true
+
+      - name: Controller app diagnostics
+        if: always()
+        run: |
+          set +e
+          for p in 5554 5556; do
+            echo "==================== emulator-$p ===================="
+            echo "-- is the controller app running? --"
+            pid=$(adb -s emulator-$p shell pidof com.zeroc.testcontroller 2>/dev/null | tr -d '\r')
+            echo "pid=${pid:-<none>}"
+            echo "-- adb forwards --"; adb -s emulator-$p forward --list 2>/dev/null
+            echo "-- controller app logcat (errors + app tag) --"
+            adb -s emulator-$p logcat -d 2>/dev/null | grep -iE "testcontroller|ControllerApp|ControllerActivity|AndroidRuntime|FATAL|IceInternal|com.zeroc" | tail -50
+          done
+
+      - name: Emulator log tails
+        if: always()
+        run: |
+          echo "=== emu_a.log ==="; tail -20 emu_a.log 2>/dev/null || true
+          echo "=== emu_b.log ==="; tail -20 emu_b.log 2>/dev/null || true
+
+      - name: Verdict
+        if: always()
+        run: echo "Success = the client test suite reports the test passed over --protocol=bt between the two emulators."
+
+# re-trigger

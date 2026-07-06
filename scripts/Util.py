@@ -2655,7 +2655,8 @@ class AndroidProcessController(RemoteProcessController):
         except Exception:
             pass
         print("installing the controller application")
-        run("{} install -t -r {}".format(self.adb(), current.testcase.getMapping().getApk(current)))
+        # -g grants runtime permissions (e.g. BLUETOOTH_CONNECT/SCAN) the controller needs for bt tests.
+        run("{} install -t -r -g {}".format(self.adb(), current.testcase.getMapping().getApk(current)))
         print("starting the controller application")
         run(
             '{} shell am start -n "{}" -a android.intent.action.MAIN -c android.intent.category.LAUNCHER'.format(
