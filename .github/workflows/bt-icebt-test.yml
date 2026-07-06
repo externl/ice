@@ -1,0 +1,184 @@
+# Fork-only SPIKE (Stage C): run the REAL IceBT Java plug-in over emulated Bluetooth between two
+# Android emulators, headless on a GH runner. Builds slice2java + the Ice/IceBT Java libs, builds a
+# tiny app (spike/icebttest) that stands up a `bt` Ice object adapter (server) and ice_ping()s it
+# from a `bt` proxy (client), then runs server on one emulator and client on the other over the
+# emulated (Netsim/Rootcanal) BT link -- with the proven priv-app + bonding recipe from Stage B.
+name: BT IceBT test (fork)
+
+on:
+  push:
+    branches: ["bt-icebt-test"]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  icebt:
+    name: Real IceBT over emulated Bluetooth
+    runs-on: ubuntu-24.04
+    timeout-minutes: 75
+    env:
+      IMG: "system-images;android-36;google_apis;x86_64"
+      ANDROID_AVD_HOME: "/home/runner/.android/avd"
+      UUID: "8ce255c0-200a-11e0-ac64-0800200c9a66"
+      PKG: "com.zeroc.icebttest"
+    steps:
+      - name: Checkout
+        uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
+
+      - name: Setup C++
+        uses: ./.github/actions/setup-cpp
+
+      - name: Setup Java
+        uses: ./.github/actions/setup-java
+
+      - name: Enable KVM
+        run: |
+          echo 'KERNEL=="kvm", GROUP="kvm", MODE="0666", OPTIONS+="static_node=kvm"' | sudo tee /etc/udev/rules.d/99-kvm4all.rules
+          sudo udevadm control --reload-rules
+          sudo udevadm trigger --name-match=kvm
+
+      - name: Free disk space
+        run: |
+          sudo rm -rf /usr/local/go* /opt/hostedtoolcache/go /usr/local/.ghcup /usr/share/dotnet
+          df -h /
+
+      # --- Build the real Ice/IceBT Java libraries (the whole point of Stage C) ---
+      - name: Build slice2java
+        run: |
+          make -C cpp cpp/bin/slice2java || make -C cpp srcs
+          ls -l cpp/bin/slice2java
+
+      - name: Build Ice + IceBT Java libraries
+        run: |
+          make -C java srcs
+          ls -l java/lib/ice-*.jar java/lib/icebt-*.jar
+
+      - name: Install Android SDK packages
+        run: |
+          SDKMGR="$ANDROID_SDK_ROOT/cmdline-tools/latest/bin/sdkmanager"
+          yes | "$SDKMGR" --licenses >/dev/null 2>&1 || true
+          "$SDKMGR" "platform-tools" "emulator" "platforms;android-36" "build-tools;36.0.0" "$IMG"
+          echo "$ANDROID_SDK_ROOT/cmdline-tools/latest/bin" >> "$GITHUB_PATH"
+          echo "$ANDROID_SDK_ROOT/platform-tools" >> "$GITHUB_PATH"
+          echo "$ANDROID_SDK_ROOT/emulator" >> "$GITHUB_PATH"
+
+      - name: Build icebttest APK
+        run: |
+          cp java/gradlew spike/icebttest/gradlew
+          cp -r java/gradle spike/icebttest/gradle
+          # Generate the debug keystore the signingConfig points at (runner has no auto one here).
+          keytool -genkeypair -v -keystore spike/icebttest/debug.keystore \
+            -storepass android -keypass android -alias androiddebugkey \
+            -keyalg RSA -keysize 2048 -validity 10000 -dname "CN=Android Debug,O=Android,C=US"
+          cd spike/icebttest
+          ./gradlew --no-daemon assembleDebug
+          APK=$(find "$PWD/build/outputs/apk" -name '*.apk' | head -1)
+          echo "built APK: $APK"
+          echo "APK=$APK" >> "$GITHUB_ENV"
+
+      # --- Two emulators + Netsim BT + priv-app (proven in Stage B) ---
+      - name: Create two AVDs
+        run: |
+          mkdir -p "$ANDROID_AVD_HOME"
+          echo no | avdmanager -v create avd -k "$IMG" -d "Nexus 6" -n bt_a
+          echo no | avdmanager -v create avd -k "$IMG" -d "Nexus 6" -n bt_b
+          for n in bt_a bt_b; do emulator -list-avds | grep -qx "$n" || { echo "AVD $n missing"; exit 1; }; done
+
+      - name: Boot both emulators with Netsim Bluetooth
+        run: |
+          FLAGS="-no-audio -partition-size 1024 -no-snapshot -writable-system -gpu swiftshader_indirect -accel on -no-boot-anim -no-window -packet-streamer-endpoint default"
+          nohup emulator -avd bt_a -port 5554 $FLAGS > emu_a.log 2>&1 &
+          nohup emulator -avd bt_b -port 5556 $FLAGS > emu_b.log 2>&1 &
+          echo "launched"
+
+      - name: Wait for boot
+        run: |
+          for p in 5554 5556; do
+            timeout 120 adb -s emulator-$p wait-for-device || echo "emulator-$p: no device"
+            timeout 300 bash -c "until [ \"\$(adb -s emulator-$p shell getprop sys.boot_completed 2>/dev/null | tr -d '\r')\" = 1 ]; do sleep 3; done" \
+              && echo "emulator-$p BOOTED" || echo "emulator-$p BOOT TIMEOUT"
+          done
+          adb devices
+
+      - name: Install icebttest as a privileged system app
+        run: |
+          set +e
+          cat > /tmp/privapp-icebttest.xml <<XML
+          <permissions>
+              <privapp-permissions package="$PKG">
+                  <permission name="android.permission.BLUETOOTH_PRIVILEGED"/>
+              </privapp-permissions>
+          </permissions>
+          XML
+          wait_boot() {
+            timeout 150 adb -s emulator-$1 wait-for-device || echo "emulator-$1: no device"
+            timeout 300 bash -c "until [ \"\$(adb -s emulator-$1 shell getprop sys.boot_completed 2>/dev/null | tr -d '\r')\" = 1 ]; do sleep 3; done" \
+              && echo "emulator-$1 up" || echo "emulator-$1 boot TIMEOUT"
+          }
+          # Pass 1: make /system writable (disable verity -> needs reboot).
+          for p in 5554 5556; do
+            adb -s emulator-$p root; sleep 2
+            adb -s emulator-$p remount 2>&1 | tail -2
+            adb -s emulator-$p reboot
+          done
+          for p in 5554 5556; do wait_boot $p; done
+          # Pass 2: push the app + allowlist, reboot to register the priv-app.
+          for p in 5554 5556; do
+            adb -s emulator-$p root; sleep 2
+            adb -s emulator-$p remount 2>&1 | tail -1
+            adb -s emulator-$p shell mkdir -p /system/priv-app/icebttest
+            adb -s emulator-$p push "$APK" /system/priv-app/icebttest/icebttest.apk
+            adb -s emulator-$p push /tmp/privapp-icebttest.xml /system/etc/permissions/privapp-permissions-icebttest.xml
+            adb -s emulator-$p reboot
+          done
+          for p in 5554 5556; do wait_boot $p; done
+          echo "-- verify BLUETOOTH_PRIVILEGED granted --"
+          for p in 5554 5556; do
+            echo "emulator-$p:"; adb -s emulator-$p shell dumpsys package $PKG 2>/dev/null | grep -iE "codePath|BLUETOOTH_PRIVILEGED: granted" | head -3 || echo "  not found"
+          done
+
+      - name: Run IceBT server + client over Bluetooth
+        continue-on-error: true
+        run: |
+          set +e
+          for p in 5554 5556; do adb -s emulator-$p root >/dev/null 2>&1 || true; done
+          sleep 3
+          for p in 5554 5556; do
+            adb -s emulator-$p shell cmd bluetooth_manager enable 2>&1
+            adb -s emulator-$p shell cmd bluetooth_manager wait-for-state:STATE_ON 2>&1
+            adb -s emulator-$p shell pm grant $PKG android.permission.BLUETOOTH_CONNECT 2>&1
+            adb -s emulator-$p shell pm grant $PKG android.permission.BLUETOOTH_SCAN 2>&1
+          done
+          B=$(adb -s emulator-5556 shell settings get secure bluetooth_address 2>/dev/null | tr -d '\r')
+          echo "server (emulator-5556) bt addr = $B"
+          for p in 5554 5556; do
+            adb -s emulator-$p logcat -c 2>/dev/null
+            adb -s emulator-$p shell am force-stop $PKG 2>/dev/null
+          done
+          echo "== start IceBT server on emulator-5556 =="
+          adb -s emulator-5556 shell am start -n $PKG/.MainActivity --es mode server --es uuid "$UUID" >/dev/null 2>&1
+          sleep 10
+          echo "== start IceBT client on emulator-5554 -> $B =="
+          adb -s emulator-5554 shell am start -n $PKG/.MainActivity --es mode client --es peer "$B" --es uuid "$UUID" >/dev/null 2>&1
+          # wait up to ~2 min for the client RESULT (bonding + connect + ice_ping)
+          for i in $(seq 1 40); do
+            adb -s emulator-5554 logcat -d -s ICEBTTEST 2>/dev/null | grep -q "RESULT client" && break
+            sleep 3
+          done
+          echo "--- server (5556) ---"; adb -s emulator-5556 logcat -d -s ICEBTTEST 2>/dev/null | sed -E 's/.*ICEBTTEST[^:]*: //' | tail -20
+          echo "--- client (5554) ---"; adb -s emulator-5554 logcat -d -s ICEBTTEST 2>/dev/null | sed -E 's/.*ICEBTTEST[^:]*: //' | tail -30
+
+      - name: Emulator log tails
+        if: always()
+        run: |
+          echo "=== emu_a.log ==="; tail -25 emu_a.log 2>/dev/null || true
+          echo "=== emu_b.log ==="; tail -25 emu_b.log 2>/dev/null || true
+
+      - name: Verdict
+        if: always()
+        run: |
+          echo "Success = 'RESULT client OK : ice_ping succeeded over IceBT-over-Bluetooth'."
+          echo "That means the real IceBT Java plug-in (AcceptorI/ConnectorI/TransceiverI) carried an"
+          echo "Ice invocation between two emulators over emulated RFCOMM -- hardware-free, on CI."
