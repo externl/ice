@@ -64,6 +64,40 @@ Where:
 - `--cross=cpp` indicates cross-language testing with C++ servers
 - `--android` runs the Android client tests
 
+## Run Android Client Against Android Server Over Bluetooth (two emulators)
+
+Both sides can run on Android emulators, using the emulator's virtual Bluetooth controller
+(Netsim/Rootcanal) — no radios required. This uses two independent controller processes, each
+managing one emulator via `--device`.
+
+Prerequisites:
+- Two running emulators (API 32+ `google_apis` images) launched with `-packet-streamer-endpoint
+  default` so both attach to the shared Netsim BT network.
+- The two emulators **bonded** beforehand (IceBT uses secure RFCOMM). Bonding is a one-time step;
+  headless (CI) it can be automated by installing a small helper as a privileged system app that
+  auto-confirms pairing (`setPairingConfirmation`, which needs `BLUETOOTH_PRIVILEGED`).
+
+Start the server controller, bound to the server emulator:
+
+```bash
+# from the java directory
+python ../scripts/Controller.py --id=server --android --device=emulator-5556 --host-bt="<emulator-5556 BT address>"
+```
+
+Then run the Android client test suite against it, bound to the client emulator:
+
+```bash
+# from the java directory
+python ./allTests.py --server=server --protocol=bt --cross=java --android --device=emulator-5554 --host-bt="<emulator-5556 BT address>" Ice/operations
+```
+
+Where:
+- `--device=emulator-<port>` selects which emulator each process drives (the harness forwards a
+  per-device host port so the two controllers don't collide).
+- `--host-bt` is the **server** emulator's Bluetooth address (find it with
+  `adb -s emulator-5556 shell settings get secure bluetooth_address`).
+- `--cross=java` runs a Java server against the Java client.
+
 ## Finding Bluetooth Addresses
 
 On Linux, you can find the Bluetooth address of your machine using:

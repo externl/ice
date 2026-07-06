@@ -2550,9 +2550,21 @@ class AndroidProcessController(RemoteProcessController):
     def __str__(self):
         return "Android"
 
+    def hostPort(self):
+        # The controller app always listens on device port 15001, but when several emulators run on
+        # one host each needs its own host-side forward port. Derive it from the emulator serial
+        # (e.g. emulator-5554 -> 15554) so both setup() and getControllerEndpoints() agree.
+        if self.device and self.device.startswith("emulator-"):
+            try:
+                return 10000 + int(self.device.split("-", 1)[1])
+            except ValueError:
+                pass
+        return 15001
+
     def setup(self, current):
-        print(f"forwarding port 15001 to the controller app")
-        run(f"{self.adb()} forward tcp:15001 tcp:15001")
+        port = self.hostPort()
+        print(f"forwarding host port {port} to the controller app (device={self.device})")
+        run(f"{self.adb()} forward tcp:{port} tcp:15001")
 
     def supportsDiscovery(self):
         return False
@@ -2561,10 +2573,15 @@ class AndroidProcessController(RemoteProcessController):
         return "Android/ProcessController"
 
     def getControllerEndpoints(self, current):
-        return "tcp -h 127.0.0.1 -p 15001"
+        return f"tcp -h 127.0.0.1 -p {self.hostPort()}"
 
     def adb(self):
-        return "adb -d" if self.device == "usb" else "adb"
+        if self.device == "usb":
+            return "adb -d"
+        elif self.device:
+            return f"adb -s {self.device}"
+        else:
+            return "adb"
 
     def startEmulator(self, avd):
         #
@@ -2602,7 +2619,7 @@ class AndroidProcessController(RemoteProcessController):
         self.avd = avd
 
         print("waiting for the emulator to respond to adb")
-        subprocess.run([self.adb(), "wait-for-device"], timeout=60, check=True)
+        subprocess.run([*self.adb().split(), "wait-for-device"], timeout=60, check=True)
 
         # Wait for the device to be ready
         print("waiting for the emulator to boot")
@@ -2667,7 +2684,7 @@ class AndroidProcessController(RemoteProcessController):
         try:
             print("pulling log files from the device")
             subprocess.run(
-                [self.adb(), "pull", "/sdcard/Android/data/com.zeroc.testcontroller/", androidLogsDir],
+                [*self.adb().split(), "pull", "/sdcard/Android/data/com.zeroc.testcontroller/", androidLogsDir],
                 timeout=60,
                 check=True,
             )
@@ -2680,7 +2697,7 @@ class AndroidProcessController(RemoteProcessController):
             try:
                 logCatResult = subprocess.run(
                     [
-                        self.adb(),
+                        *self.adb().split(),
                         "logcat",
                         "-d",
                         "-v",
