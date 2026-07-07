@@ -2463,6 +2463,8 @@ class RemoteProcessController(ProcessController):
                 sys.stdout.write("controller application unreachable, restarting... ")
                 sys.stdout.flush()
                 self.restartControllerApp(current, ident)
+                # Re-run setup: a restart may have dropped the host->device port forward we rely on.
+                self.setup(current)
                 print("ok")
 
         raise RuntimeError("couldn't reach the remote controller `{0}'".format(ident))
@@ -2473,6 +2475,13 @@ class RemoteProcessController(ProcessController):
             conn = proxy.ice_getConnection()
             proxy.ice_getConnection().setCloseCallback(lambda conn: self.clearProcessController(proxy, conn))
             self.cond.notify_all()
+
+    def bindProcessesToController(self):
+        # When true, proxies for spawned processes are rebound to the process-controller connection
+        # rather than trusting the endpoints the controller published. Needed when the controller is
+        # reached over a host-side tunnel (e.g. an adb port forward) whose host port differs from the
+        # device port the controller advertises for its process proxies.
+        return False
 
     def supportsDiscovery(self):
         return True
@@ -2523,8 +2532,11 @@ class RemoteProcessController(ProcessController):
 
         prx = processController.start(str(current.testsuite), exe, args)
 
-        # Create bi-dir proxy in case we're talking to a bi-bir process controller.
-        if self.adapter:
+        # Create bi-dir proxy in case we're talking to a bi-dir process controller, or when the
+        # controller wants its process proxies routed back over the controller connection (e.g. the
+        # Android controller, reached through an adb forward, publishes proxies on the device-side
+        # port which the host can't reach directly).
+        if self.adapter or self.bindProcessesToController():
             prx = processController.ice_getConnection().createProxy(prx.ice_getIdentity())
         from Test import Common as Test_Common
 
@@ -2565,6 +2577,12 @@ class AndroidProcessController(RemoteProcessController):
         port = self.hostPort()
         print(f"forwarding host port {port} to the controller app (device={self.device})")
         run(f"{self.adb()} forward tcp:{port} tcp:15001")
+
+    def bindProcessesToController(self):
+        # The controller app advertises its process proxies on the device port (15001). The host only
+        # reaches the device through a per-emulator adb forward, so rebind process proxies onto the
+        # controller connection instead of connecting to the advertised (unreachable) endpoint.
+        return True
 
     def supportsDiscovery(self):
         return False
@@ -2669,7 +2687,7 @@ class AndroidProcessController(RemoteProcessController):
         sys.stdout.flush()
         for i in range(30):
             try:
-                self.controllerPid = run("adb shell pidof -s com.zeroc.testcontroller")
+                self.controllerPid = run(f"{self.adb()} shell pidof -s com.zeroc.testcontroller")
                 if self.controllerPid:
                     print(" ok (pid={})".format(self.controllerPid))
                     break
@@ -2751,10 +2769,15 @@ class AndroidProcessController(RemoteProcessController):
                 sys.stdout.flush()
                 time.sleep(0.5)
 
-        try:
-            run("adb kill-server")
-        except Exception:
-            pass
+        # Only reset the adb server if we started (and just killed) our own emulator. When running
+        # against an externally-managed device/emulator serial -- especially with a second emulator
+        # in play for cross-tests -- `adb kill-server` would drop every device's port forwards and
+        # leave the peer controller unreachable.
+        if self.emulator:
+            try:
+                run("adb kill-server")
+            except Exception:
+                pass
 
 
 class iOSSimulatorDevice:
