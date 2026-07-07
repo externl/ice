@@ -24,7 +24,9 @@ jobs:
       IMG: "system-images;android-36;google_apis;x86_64"
       ANDROID_AVD_HOME: "/home/runner/.android/avd"
       UUID: "8ce255c0-200a-11e0-ac64-0800200c9a66"
-      TEST: "Ice/operations"
+      # Suites proven to pass Android<->Android over emulated RFCOMM (marshalling/RPC core; no
+      # transport-specific endpoint strings). Space-separated -> passed as separate suite args.
+      TEST: "Ice/operations Ice/ami Ice/enums Ice/inheritance Ice/objects Ice/optional"
     steps:
       - name: Checkout
         uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
@@ -163,14 +165,16 @@ jobs:
           echo "controller pid $CPID"
           sleep 10
           kill -0 "$CPID" 2>/dev/null || { echo "server controller exited early"; cat "$GITHUB_WORKSPACE/controller.log"; exit 1; }
-          echo "== running client test suite on emulator-5554 over bt =="
+          echo "== running client test suites on emulator-5554 over bt =="
           rc=0
+          # $TEST is intentionally unquoted so each space-separated suite is a separate argument.
           python3 allTests.py --server=server --protocol=bt --cross=java --android --controller-app --device=emulator-5554 \
-            --host-bt="$BT_ADDR" --debug --workers=1 "$TEST" 2>&1 | tee "$GITHUB_WORKSPACE/alltests.log" || rc=${PIPESTATUS[0]}
+            --host-bt="$BT_ADDR" --workers=1 $TEST 2>&1 | tee "$GITHUB_WORKSPACE/alltests.log" || rc=${PIPESTATUS[0]}
           echo "== controller.log tail =="; tail -40 "$GITHUB_WORKSPACE/controller.log" || true
           echo "== allTests pipeline rc=$rc =="
-          # Assert the suite actually passed: allTests exited 0 and printed the success summary.
-          grep -qx "1 succeeded" "$GITHUB_WORKSPACE/alltests.log" && [ "$rc" = "0" ]
+          # Assert every suite passed: allTests exited 0 and printed a clean "<n> succeeded" summary.
+          # A failure summary reads "<x> succeeded and <y> failed:" and won't match the anchored regex.
+          grep -qE "^[0-9]+ succeeded$" "$GITHUB_WORKSPACE/alltests.log" && [ "$rc" = "0" ]
 
       - name: Controller app diagnostics
         if: always()
