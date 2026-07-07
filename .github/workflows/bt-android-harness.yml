@@ -152,21 +152,25 @@ jobs:
           echo "-- bonded devices on client (5554) --"; adb -s emulator-5554 shell dumpsys bluetooth_manager 2>/dev/null | grep -iE "Bonded devices|$B" | head -3
 
       - name: Run the harness over Bluetooth (Controller.py server + allTests.py client)
-        continue-on-error: true
         run: |
-          set +e
           cd java
           echo "== starting server controller on emulator-5556 =="
-          nohup python3 ../scripts/Controller.py --id=server --android --device=emulator-5556 --host-bt="$BT_ADDR" \
-            > "$GITHUB_WORKSPACE/controller.log" 2>&1 &
-          echo "controller pid $!"
-          echo "-- waiting for the server controller to install + start its app --"
-          for i in $(seq 1 40); do grep -qiE "ProcessController|controller ready|Adapter ready|Listening" "$GITHUB_WORKSPACE/controller.log" && break; sleep 3; done
-          tail -20 "$GITHUB_WORKSPACE/controller.log" || true
+          # --controller-app makes each side install + start its controller app up front, instead of
+          # falling back to the slow (250s) unreachable-then-restart path.
+          nohup python3 ../scripts/Controller.py --id=server --android --controller-app --device=emulator-5556 \
+            --host-bt="$BT_ADDR" > "$GITHUB_WORKSPACE/controller.log" 2>&1 &
+          CPID=$!
+          echo "controller pid $CPID"
+          sleep 10
+          kill -0 "$CPID" 2>/dev/null || { echo "server controller exited early"; cat "$GITHUB_WORKSPACE/controller.log"; exit 1; }
           echo "== running client test suite on emulator-5554 over bt =="
-          python3 allTests.py --server=server --protocol=bt --cross=java --android --device=emulator-5554 \
-            --host-bt="$BT_ADDR" --debug --workers=1 "$TEST" 2>&1 | tail -80
+          rc=0
+          python3 allTests.py --server=server --protocol=bt --cross=java --android --controller-app --device=emulator-5554 \
+            --host-bt="$BT_ADDR" --debug --workers=1 "$TEST" 2>&1 | tee "$GITHUB_WORKSPACE/alltests.log" || rc=${PIPESTATUS[0]}
           echo "== controller.log tail =="; tail -40 "$GITHUB_WORKSPACE/controller.log" || true
+          echo "== allTests pipeline rc=$rc =="
+          # Assert the suite actually passed: allTests exited 0 and printed the success summary.
+          grep -qx "1 succeeded" "$GITHUB_WORKSPACE/alltests.log" && [ "$rc" = "0" ]
 
       - name: Controller app diagnostics
         if: always()
