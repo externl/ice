@@ -54,10 +54,6 @@ class IceStorm(ProcessFromBinDir, Server):
             self.instanceName if self.nreplicas == 0 else "{0} replica #{1}".format(self.instanceName, self.replica)
         )
 
-    def getExe(self, current: Driver.Current) -> str:
-        assert self.exe is not None
-        return self.exe + "_32" if current.config.buildPlatform == "ppc" else self.exe
-
     def setup(self, current: Driver.Current) -> None:
         # Create the database directory
         self.dbdir = os.path.join(
@@ -237,12 +233,6 @@ class IceStormAdmin(ProcessFromBinDir, ProcessIsReleaseOnly, IceStormProcess, Cl
             **kargs,
         )
         IceStormProcess.__init__(self, instanceName, instance)
-
-    def getExe(self, current: Driver.Current) -> str:
-        # This used to skip the "_32" suffix when testing against a binary distribution, but binary
-        # distribution testing (ICE_BIN_DIST) was removed in #3442.
-        assert self.exe is not None
-        return self.exe + "_32" if current.config.buildPlatform == "ppc" else self.exe
 
     def getParentProps(self, current: Driver.Current) -> Props:
         return Client.getProps(self, current)

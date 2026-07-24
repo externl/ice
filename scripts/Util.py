@@ -1693,13 +1693,24 @@ class Client(IceProcess):
 #
 
 
-class ProcessFromBinDir:
+# Mixed into Process specializations, so it reaches Process.getExe through super(). Process as a
+# base for type checking only keeps the runtime method resolution order unchanged.
+_ProcessFromBinDirBase = Process if TYPE_CHECKING else object
+
+
+class ProcessFromBinDir(_ProcessFromBinDirBase):
     # Set by the processes whose executable lives in a mapping specific sub-directory rather than
     # directly in the bin directory (see IceBoxUtil.IceBox).
     binDir: str | None = None
 
     def isFromBinDir(self) -> bool:
         return True
+
+    def getExe(self, current: Driver.Current) -> str:
+        # The 32 bit build of a bin directory executable carries a _32 suffix on ppc. Specializations
+        # that pick their executable another way (see IceBoxUtil) override this and opt out.
+        exe = super().getExe(current)
+        return exe + "_32" if current.config.buildPlatform == "ppc" else exe
 
 
 #

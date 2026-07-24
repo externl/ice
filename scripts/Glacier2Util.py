@@ -48,10 +48,6 @@ class Glacier2Router(ProcessFromBinDir, ProcessIsReleaseOnly, Server):
         self.portnum = portnum
         self.passwords = passwords
 
-    def getExe(self, current: Driver.Current) -> str:
-        assert self.exe is not None
-        return self.exe + "_32" if current.config.buildPlatform == "ppc" else self.exe
-
     def setup(self, current: Driver.Current) -> None:
         if self.passwords:
             path = os.path.join(current.testsuite.getPath(), "passwords")
