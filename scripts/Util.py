@@ -694,7 +694,7 @@ class Mapping(object):
             self.cprops: list[str] = []
             self.sprops: list[str] = []
 
-            # Options bellow are not parsed by the base class by still initialized here for convenience (this
+            # Options below are not parsed by the base class but still initialized here for convenience (this
             # avoid having to check the configuration type)
             self.openssl = False
             self.browser = ""
@@ -2193,7 +2193,7 @@ class Result:
             except UnicodeEncodeError:
                 #
                 # The console doesn't support the encoding of the message, we convert the message
-                # to an UTF-8 byte sequence and print out the byte sequence. We replace all the
+                # to a UTF-8 byte sequence and print out the byte sequence. We replace all the
                 # double backslash from the byte sequence string representation to single back
                 # slash.
                 #
@@ -2208,7 +2208,7 @@ class Result:
             except UnicodeEncodeError:
                 #
                 # The console doesn't support the encoding of the message, we convert the message
-                # to an UTF-8 byte sequence and print out the byte sequence. We replace all the
+                # to a UTF-8 byte sequence and print out the byte sequence. We replace all the
                 # double backslash from the byte sequence string representation to single back
                 # slash.
                 #
@@ -4392,7 +4392,7 @@ class CSharpMapping(Mapping):
         cmd = "dotnet {}.dll {}".format(os.path.join(path, exe), args)
 
         if current.config.dotnetCoverageSession != "":
-            # escapign \" is requried for passing though from dotnet-coverage -> dotnet -> exe
+            # escaping \" is required for passing through from dotnet-coverage -> dotnet -> exe
             cmd = cmd.replace('\\"', '\\\\\\"')
             cmd = f"dotnet-coverage connect --nologo {current.config.dotnetCoverageSession} {cmd}"
 
@@ -4471,7 +4471,7 @@ class PythonMapping(CppBasedMapping):
         def usage(cls) -> None:
             print("")
             print("Python mapping options:")
-            print("--python=<interpreter>   Choose the interperter used to run python tests")
+            print("--python=<interpreter>   Choose the interpreter used to run python tests")
             print("--load-slice             Use Ice.loadSlice instead of the slice2py static generated code.")
             print("--pip-package            Use the installed pip package instead of the local build.")
 
