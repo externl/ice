@@ -1,0 +1,139 @@
+name: Runner entropy probe
+
+# Diagnostic for intermittent all-zero output from x86 entropy instructions
+# (RDSEED/RDRAND) on GitHub-hosted amd64 runners, observed as duplicate
+# 00000000-0000-4000-8000-000000000000 UUIDs in the IceUtil/uuid test.
+# Each job records the runner's CPU model + microcode revision, then hammers
+# RDSEED/RDRAND and std::random_device the same way Ice's generateRandom does.
+
+on:
+  workflow_dispatch:
+  push:
+    branches: ["diag/runner-entropy-probe"]
+
+permissions: {}
+
+jobs:
+  probe:
+    name: probe-${{ matrix.n }}
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    strategy:
+      fail-fast: false
+      matrix:
+        n: [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20]
+    steps:
+      - name: CPU info
+        run: |
+          grep -m1 "model name" /proc/cpuinfo
+          grep -m1 "cpu family" /proc/cpuinfo
+          grep -m1 "stepping" /proc/cpuinfo
+          grep -m1 "microcode" /proc/cpuinfo
+          grep -m1 -q rdseed /proc/cpuinfo && echo "flags: rdseed present" || echo "flags: no rdseed"
+          grep -m1 -q rdrand /proc/cpuinfo && echo "flags: rdrand present" || echo "flags: no rdrand"
+      - name: Build and run probe
+        run: |
+          cat > /tmp/probe.cpp <<'EOF'
+          #include <atomic>
+          #include <cpuid.h>
+          #include <cstdio>
+          #include <immintrin.h>
+          #include <random>
+          #include <thread>
+
+          int main()
+          {
+              unsigned a, b, c, d;
+              __get_cpuid(1, &a, &b, &c, &d);
+              bool hasRdrand = (c >> 30) & 1;
+              bool hasRdseed = false;
+              if (__get_cpuid_count(7, 0, &a, &b, &c, &d))
+                  hasRdseed = (b >> 18) & 1;
+              printf("cpuid rdrand=%d rdseed=%d\n", hasRdrand, hasRdseed);
+
+              if (hasRdseed)
+              {
+                  std::atomic<unsigned long> zeros{0}, cf0{0};
+                  auto w = [&] {
+                      unsigned v;
+                      for (int i = 0; i < 5000000; i++)
+                      {
+                          if (_rdseed32_step(&v))
+                          {
+                              if (v == 0)
+                                  zeros++;
+                          }
+                          else
+                              cf0++;
+                      }
+                  };
+                  std::thread t1(w), t2(w), t3(w);
+                  t1.join();
+                  t2.join();
+                  t3.join();
+                  printf("rdseed32 draws=15000000 zeros_with_success=%lu cf0=%lu\n", zeros.load(), cf0.load());
+              }
+
+              if (hasRdrand)
+              {
+                  std::atomic<unsigned long> zeros{0}, cf0{0};
+                  auto w = [&] {
+                      unsigned v;
+                      for (int i = 0; i < 5000000; i++)
+                      {
+                          if (_rdrand32_step(&v))
+                          {
+                              if (v == 0)
+                                  zeros++;
+                          }
+                          else
+                              cf0++;
+                      }
+                  };
+                  std::thread t1(w), t2(w), t3(w);
+                  t1.join();
+                  t2.join();
+                  t3.join();
+                  printf("rdrand32 draws=15000000 zeros_with_success=%lu cf0=%lu\n", zeros.load(), cf0.load());
+              }
+
+              // IceInternal::generateRandom pattern: 16-byte fills, one
+              // uniform_int_distribution draw per byte from a per-thread
+              // std::random_device, 3 threads.
+              std::atomic<unsigned long> zeroBytes{0}, zeroFills{0};
+              auto w = [&] {
+                  std::random_device rd;
+                  std::uniform_int_distribution<unsigned int> dist(0, 255);
+                  for (int i = 0; i < 200000; i++)
+                  {
+                      int zc = 0;
+                      for (int j = 0; j < 16; j++)
+                      {
+                          if (dist(rd) == 0)
+                              zc++;
+                      }
+                      zeroBytes += zc;
+                      if (zc == 16)
+                          zeroFills++;
+                  }
+              };
+              std::thread t1(w), t2(w), t3(w);
+              t1.join();
+              t2.join();
+              t3.join();
+              printf("ice_pattern fills=600000 zero_bytes=%lu all_zero_fills=%lu\n", zeroBytes.load(), zeroFills.load());
+              return 0;
+          }
+          EOF
+          g++ -O2 -mrdrnd -mrdseed -pthread /tmp/probe.cpp -o /tmp/probe
+          /tmp/probe | tee /tmp/probe.out
+          model=$(grep -m1 "model name" /proc/cpuinfo | cut -d: -f2- | xargs)
+          fam=$(grep -m1 "cpu family" /proc/cpuinfo | awk '{print $4}')
+          ucode=$(grep -m1 microcode /proc/cpuinfo | awk '{print $3}')
+          echo "AGG|${model}|family=${fam}|ucode=${ucode}|$(tr '\n' '|' < /tmp/probe.out)"
+          {
+            echo "### probe-${{ matrix.n }}: ${model} (family ${fam}, ucode ${ucode})"
+            echo '```'
+            cat /tmp/probe.out
+            echo '```'
+          } >> "$GITHUB_STEP_SUMMARY"
